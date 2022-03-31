@@ -442,32 +442,19 @@ def display_logs(rows, derived_virtual_selected_rows):
                     x_min = df_curve[columns[1]].dropna().values.min()
                     x_max = df_curve[columns[1]].dropna().values.max()
                     
-                    if f not in appeared_formation:
-                        fig.add_trace(go.Scatter(name = f, x = [x_min, x_min, x_max, x_max, x_min], 
-                                                 y = [y_min, y_max, y_max, y_min, y_min], mode='lines',fill="toself",
-                                                 fillcolor = colors[f], showlegend=True
+                    
+                    fig.add_trace(go.Scatter(name = f, x = [x_min, x_min, x_max, x_max, x_min], 
+                                                 y = [y_min, y_max, y_max, y_min, y_min], mode='lines', line=dict(color="black"),
+                                                 fill="toself", fillcolor = colors[f], showlegend=False
                                                 ), 1, i+1
                                       )
                         
-                        fig.add_trace(go.Scatter(name = f, x = [x_min+ (x_max-x_min)/2], y=[y_min+(y_max-y_min)/2],
+                    fig.add_trace(go.Scatter(name = f, x = [x_min+ (x_max-x_min)/2], y=[y_min+(y_max-y_min)/2],
                                                  mode='text',line=dict(color="black"),text=[f],
                                                  textposition="middle center", showlegend=False
                                                   ), 1, i+1                            
                                       )
-                        
-                    else:
-                        fig.add_trace(go.Scatter(name = f, x = [x_min, x_min, x_max, x_max, x_min], 
-                                                 y = [y_min, y_max, y_max, y_min, y_min], mode='lines',fill="toself",
-                                                 fillcolor = colors[f], showlegend=False
-                                                ), 1, i+1
-                                      )
-                        
-                        fig.add_trace(go.Scatter(name = f, x = [x_min+ (x_max-x_min)/2], y=[y_min+(y_max-y_min)/2],
-                                                 mode='text',line=dict(color="black"),text=[f],
-                                                 textposition="middle center", showlegend=False
-                                                  ), 1, i+1                            
-                                      )
-                        
+
                     appeared_formation.append(f)    
                     
                     
