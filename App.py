@@ -451,7 +451,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                         
                         fig.add_trace(go.Scatter(name = f, x = [x_min+ (x_max-x_min)/2], y=[y_min+(y_max-y_min)/2],
                                                  mode='text',line=dict(color="black"),text=[f],
-                                                 textposition="middle center"
+                                                 textposition="middle center", showlegend=False
                                                   ), 1, i+1                            
                                       )
                         
@@ -464,7 +464,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                         
                         fig.add_trace(go.Scatter(name = f, x = [x_min+ (x_max-x_min)/2], y=[y_min+(y_max-y_min)/2],
                                                  mode='text',line=dict(color="black"),text=[f],
-                                                 textposition="middle center"
+                                                 textposition="middle center", showlegend=False
                                                   ), 1, i+1                            
                                       )
                         
