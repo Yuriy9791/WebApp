@@ -393,7 +393,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                 for f in list(df_curve.Formation):
                     formations.append(f)
         formations = pd.unique(formations)
-        colors = {f: ('rgba(' + ','.join((str(30+i*10),str(150/(i+1)), str(i*30), str(0.2)))+')') 
+        colors = {f: ('rgba(' + ','.join((str(60+i*10),str(256/(i+1)), str(i*15), str(0.2)))+')') 
                   for f,i in zip(formations, range(0, len(formations)))
                  }
         
