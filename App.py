@@ -1,3 +1,4 @@
+%%writefile 'App.py'
 import re
 import json
 import dash
@@ -21,8 +22,10 @@ import botocore
 import lasio
 import requests
 
-#### model ##############################################################################################################################################################
+##### settings ###########################################################################################################################################
 
+name_app = "GDS-Viewer"
+token = "pk.eyJ1IjoieXVyaXlrYXByaWVsb3YiLCJhIjoiY2t2YjBiNXl2NDV4YzJucXcwcXdtZHVveiJ9.JSi7Xwold-yTZieIc264Ww"
 bucket_for_visualization="transformed-for-visualization-data-1"
 bucket_for_metadata="for-metadata"
 bucket_for_download="transformed-for-download-data"
@@ -33,13 +36,24 @@ list_metadata_files = ['List_of_curves.csv', 'List_of_data.csv']
 list_metadata = ['Age', 'Name', 'Type', 'lat', 'lon', 'Depth_start', 'Depth_finish', 
                  'Special_mark','Reference']
 
-geotime_list = [ 'Eocene', 'Late_Jurassic', 'Jurassic', 
-                'Late Permian_Early Triassic', 'Late Carboniferous_Early Permian',]
+geotime_list = [ 'Eocene', 
+                'Cretaceous',
+                'Jurassic', 
+                'Late Permian_Early Triassic', 
+                'Late Carboniferous_Early Permian',
+               ]
 # log curves with different axis scale
-list_mnemonics_log500 = ['GR']
+list_mnemonics_log500 = ['']
 list_mnemonics_log2000 =  ['PERM']
-list_mnemonics_RES = ['RESD', 'RESS',]
-list_mnemonics = ['SO', 'DT', 'RHOB']
+list_mnemonics_RES = ['RESD', 'RESS', 'RES']
+list_mnemonics = ['SO', 'DT', 'RHOB', 'GR', 'SONIC', 'GNT', 'SP']
+
+# changing in columns name
+new_columns_name = ['Time', 'Lat', 'Lon', 'Depth_start, feet', 'Depth_finish, feet', 'Well_name']
+
+
+#### model ##############################################################################################################################################################
+
 
 def make_client_resource():
     """
@@ -62,16 +76,20 @@ def find_number_file_name(list_dir, key_word):
 
 
 def find_number_lasfile_name(list_dir, key_word):
+    j = -1
     for i in range(1, len(list_dir)):
         s1 = list_dir[i]
+        
         filename = s1.split('/')[-1]
-        mnemonics = filename.split('.LAS')[0]
+        mnemonics = filename.split('.las')[0]
+        #print('mnemon-',mnemonics, 'key_word-', key_word)
         if mnemonics == key_word:
-            return i
+            j = i
+    
+    return j
 
         
 def read_curves_csv(client, datadir, option, type_curve):
-    
     keys_log = [obj['Key'] for obj in client.list_objects_v2(
                 Bucket=datadir, Prefix=option)['Contents']]
     
@@ -85,7 +103,6 @@ def read_curves_csv(client, datadir, option, type_curve):
 
 def read_resource_metadata_csv(client, datadir, metadata_file_name, 
                                *args, make_change = False, num_col = None):
-    
     keys_loc = [obj['Key'] for obj in client.list_objects_v2(\
                 Bucket=datadir, Prefix=metadata_file_name)['Contents']]
     
@@ -107,7 +124,8 @@ curves_data = read_resource_metadata_csv(client, bucket_for_metadata, list_metad
 table_data = read_resource_metadata_csv(client, bucket_for_metadata, list_metadata_files[1], 
                                             geotime_list, make_change=True, num_col=0)
 
-wells_map = curves_data[['lat', 'lon', 'Name']] 
+
+wells_map = curves_data[['Age','lat', 'lon', 'Name']] 
 wells_map = wells_map.set_index(['lat']).drop_duplicates()
 wells_map = wells_map.rename_axis('lat').reset_index()
 
@@ -117,11 +135,14 @@ Keys_las = [obj['Key'] for obj in client.list_objects_v2(Bucket=bucket_for_downl
 
 #### view ################################################################################################################################################################
 
-px.set_mapbox_access_token(
-                          "pk.eyJ1IjoieXVyaXlrYXByaWVsb3YiLCJhIjoiY2t2YjBiNXl2NDV4YzJucXcwcXdtZHVveiJ9.JSi7Xwold-yTZieIc264Ww"
-                           )
-fig_map = px.scatter_mapbox(wells_map, lat="lat", lon="lon",  zoom=4, mapbox_style='satellite', height= 800)
-fig_map.layout.template = 'plotly_dark'
+for_maping_list = ['lat', 'lon', 'Name']
+plotly_theme = 'seaborn'#'plotly_dark'#'ggplot2'#'plotly'#'simple_white' #
+dash_theme = dbc.themes.FLATLY#SUPERHERO #'CYBORG'
+
+px.set_mapbox_access_token(token)
+fig_map = px.scatter_mapbox(wells_map[for_maping_list], title='Saudi Arabya Plate',
+                            lat="lat", lon="lon",  zoom=4, mapbox_style='satellite', height= 800)
+fig_map.layout.template = plotly_theme 
 fig_map.update_layout(clickmode='event+select')
 fig_map.update_traces(marker_size=9, marker_color='red')
 
@@ -133,34 +154,55 @@ fig_logs = tools.make_subplots(rows=1, cols=1).\
 Tab_map_view = [
                  dbc.Row(
                           [
-                            dbc.Col(dcc.Graph(id='basic-interactions', figure=fig_map), 
-                                               width=4, md={'size': 9,  "offset": 1, 'order': 'last'}),
-                           ]
+                            dbc.Col(dcc.Graph(id='basic-interactions', figure=fig_map), width=4, md={'size': 8,  "offset": 1, 'order': 'first'}),
+                            dbc.Col(
+                                     [
+                                         html.Br(), html.Br(),
+                                         html.H5(children="Geologic Time", style = {'textAlign' : 'center'}),
+                                         dbc.Card(
+                                                   [
+                                                     
+                                                     dcc.Checklist(id='geo-time', 
+                                                                  options=[
+                                                                             {'label': x, 'value': x, 'disabled':False} for x in table_data['Geological_Time'].unique()
+                                                                           ],
+                                                                  value=table_data['Geological_Time'].unique(), 
+                                                                  labelStyle={
+                                                                  #'background':'#A5D6A7',
+                                                                  'padding':'0.3rem 1rem',
+                                                                   # 'border-radius':'5.5rem',  
+                                                                  'display': 'block',
+                                                                  'cursor': 'pointer'
+                                                                             },
+                                                                   inputStyle={"margin-right": "10px"}), 
+                                                    ]
+                                                  ),
+                                                                             
+                                     ], width=4, sm={'size': 2,  "offset": 0, 'order': 2}
+                                   )
+                              
+                          ]
                         ), 
                
-                html.Br(),  
-                dbc.Row(dbc.Col(html.H5("Selected Wells"),
-                        width={'size': 6, 'offset': 5},
-                        ),
-                ),          
+                dbc.Row([ dbc.Col(
+                                   html.H5(children="Selected Wells", style = {'textAlign' : 'center'}), 
+                                   width=4, md={'size': 6,  "offset": 2, 'order': 'first'}
+                                  ),
+                         ]),          
     
+                 
                  dbc.Row(
-                         [
-                              dbc.Col(html.Div(id='curves-table'), width=4, md={'size': 6, "offset": 3, 'order': 'first'}),
-                         ]
-                       ),
-    
-                 html.Br(),
-                 dbc.Row(
-                         [
-                              dbc.Col(dbc.Button("Load Las", id='load-las', color="primary", size='lg'), width=4, md={'size': 1, "offset": 2, 'order': 'first'}),
+                         [    
+                              dbc.Col([
+                                         html.Div(id='curves-table'),
+                                         html.Br()
+                                       ], 
+                                       width=4, md={'size': 6,  "offset": 2, 'order': 'first'}),
                               
                          ]
                        ),
-    
-                                              
+                                                  
                ]
-
 
 
 Tab_log_view = [
@@ -168,23 +210,28 @@ Tab_log_view = [
                  dbc.Row(
                           [
                            
-                           dbc.Col(html.Div(id='logs'), width=4, md={'size': 8, "offset": 2, 'order': 'first'}),
-                           dbc.Col( html.Div(id='downloaded'), width=4, md={'size': 2, 'order': 'last'}),
+                           dbc.Col(dbc.Container(html.Div(id='logs'), fluid=True), width=4, md={'size': 9, "offset": 1, 'order': 1}),
+                           dbc.Col( [
+                                      html.Br(),
+                                      html.Br(),
+                                      html.Br(),
+                                      html.H5(children="LAS Files", style = {'textAlign' : 'center'}),
+                                      html.Div(id='downloading')
+                                    ], width=4, md={'size': 2, "offset": 0, 'order': 2}),
                           ]
                          ),
     
                 ]
 
 
-
-
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.CYBORG])
+app = dash.Dash(__name__, external_stylesheets=[dash_theme])
+app.title = name_app
 server = app.server
 
-app.layout = html.Div([
-                        dbc.Row(
-                                 dbc.Col(html.H3("GDS-Viewer"), width={'size': 6, 'offset': 5},
-                                        ),
+app.layout = dbc.Container([
+                        dbc.Row([
+                                 html.H3(children="GDS-Viewer Dashboard", style = {'textAlign' : 'center'}),
+                                ]
                                ),
     
                          dbc.Row(
@@ -192,20 +239,32 @@ app.layout = html.Div([
                                            dbc.Tabs(
                                                     [
                                                     #dbc.Tab(Tab_content, label="Content", activeTabClassName="fw-bold fst-italic"),
-                                                    dbc.Tab(Tab_map_view, label="Wells", activeTabClassName="fw-bold fst-italic"),
-                                                    dbc.Tab(Tab_log_view, label="Logs", activeTabClassName="fw-bold fst-italic"),
+                                                     dbc.Tab(Tab_map_view, label="Wells", activeTabClassName="fw-bold fst-italic"),
+                                                     dbc.Tab(Tab_log_view, label="Logs", activeTabClassName="fw-bold fst-italic"),
                                                     ]
                                                    ),
                                             ], width={'size': 12, 'offset': 0})),
         
       
-                       ])
-
-
-
+                       ], fluid=True)
 
 
 ## Callbacks ##############################################################################################
+
+@app.callback(
+    Output(component_id='basic-interactions', component_property='figure'),
+    Input(component_id='geo-time', component_property='value'),
+    prevent_initial_call=True,    
+)
+def update_display_wells(options_chosen):
+    fig_map = px.scatter_mapbox(wells_map[wells_map['Age'].isin(options_chosen)], title='Saudi Arabya Plate', 
+                                lat="lat", lon="lon",  zoom=4, mapbox_style='satellite', height= 800)
+    fig_map.layout.template = plotly_theme 
+    fig_map.update_layout(clickmode='event+select')
+    fig_map.update_traces(marker_size=9, marker_color='red')
+    
+    return fig_map
+
 
 @app.callback(Output('curves-table', 'children'),
               Input('basic-interactions', 'selectedData'))
@@ -243,33 +302,42 @@ def display_click_data(clickData):
             y.append(y_number)
             
         
-        well_curves = curves_data[['Age', 'lat', 'lon', 'Type', 'Name']]
+        well_curves = curves_data[['Age', 'lat', 'lon', 'Depth_start', 'Depth_finish','Type', 'Name', 'Special_mark']]
         df_ = well_curves[(well_curves['lon'].isin(x)) & (well_curves['lat'].isin(y))]
+        
+        ## Rename
+        df_ = df_.rename(columns={'Age': new_columns_name[0], 'lat':new_columns_name[1], 
+                                  'lon':new_columns_name[2], 'Depth_start': new_columns_name[3], 
+                                 'Depth_finish': new_columns_name[4], 'Name': new_columns_name[5]})
+        
         table = DataTable(id='curves-table_1',
                           columns = [{'name': col, 'id': col} for col in df_.columns],
                           data = df_.to_dict('records'),
                           filter_action='native',
-                          style_cell={'textAlign': 'left'},
+                          style_cell={'textAlign': 'left',
+                                     'padding': '10px',
+                                     'backgroundColor': 'rgb(160, 160, 160)'},
                           style_data={
-                                      'color': 'white',
-                                      'backgroundColor': 'black',
+                                      'color': 'grey',
+                                      'backgroundColor': 'white',
                                       'width': '75px', 'minWidth': '75px', 'maxWidth': '75px',
                                       'overflow': 'hidden',
                                       'textOverflow': 'ellipsis'
                                      },
                           style_header={
                                         'backgroundColor': 'rgb(210, 210, 210)',
-                                        'color': 'black',
+                                        'color': 'grey',
                                         'fontWeight': 'bold'
                                         },
                           
+                          style_table = {'height': '400px', 'overflowY': 'auto'},
                           sort_action="native",
                           sort_mode="multi",
                           column_selectable="single",
                           row_selectable="multi",
                           row_deletable=True,
                           selected_rows=[],
-                          page_action="native",
+                          page_action="none",
                           page_current= 0,
                           page_size= 10,
                          )
@@ -279,7 +347,7 @@ def display_click_data(clickData):
 
 @app.callback(
               Output('logs', 'children'),
-              Output("downloaded", "children"),
+              #Output("downloaded", "children"),
               Input('curves-table_1', "derived_virtual_data"),
               Input('curves-table_1', "derived_virtual_selected_rows"),
               prevent_initial_call=True,
@@ -290,38 +358,114 @@ def display_logs(rows, derived_virtual_selected_rows):
         derived_virtual_selected_rows = []
     
     if derived_virtual_selected_rows!=[]:
-        
         df = pd.DataFrame(rows)
         selected_rows = df[df.index.isin(derived_virtual_selected_rows)]
         cols_ = selected_rows.shape[0]
-        fig = tools.make_subplots(rows=1, cols=cols_).\
+        
+        titles = [selected_rows.iloc[i:i+1]['Type'].values[0] for i in range(cols_)]
+        fig = tools.make_subplots(rows=1, cols=cols_, subplot_titles=titles).\
                                   update_xaxes(side='top', ticklabelposition="inside",
                                                title_standoff = 10)
-        link = []
+       
+        formations = []
         for i in range(0, cols_):
                 type_curve = selected_rows.iloc[i:i+1]['Type'].values[0]
+                ## Reading data from gds with appropriation type of curve. 
+                ## Second variant - read at the beginning all data to the memmory
                 data_curves = read_curves_csv(client, bucket_for_visualization, 
                                               folders_name_for_visualization[0], type_curve)
                 columns_curves = data_curves.columns
-                wellname = selected_rows.iloc[i:i+1]['Name'].values[0]
-                lat =  selected_rows.iloc[i:i+1]['lat'].values[0]
-                lon =  selected_rows.iloc[i:i+1]['lon'].values[0]                
+                wellname = selected_rows.iloc[i:i+1][new_columns_name[-1]].values[0]
+                lat =  selected_rows.iloc[i:i+1][new_columns_name[1]].values[0]
+                lon =  selected_rows.iloc[i:i+1][new_columns_name[2]].values[0]
+                
+                
+                start_d = selected_rows.iloc[i:i+1][new_columns_name[3]].values[0]
+                stop_d = selected_rows.iloc[i:i+1][new_columns_name[4]].values[0]
+                
                                         
-                y = data_curves[(data_curves['Well_name']==wellname) & 
+                df_curve = data_curves[(data_curves['Well_name']==wellname) & 
                                 (data_curves['lat']==lat) & 
-                               (data_curves['lon']==lon)][columns_curves[0]]
-                x = data_curves[(data_curves['Well_name']==wellname) & 
+                                (data_curves['lon']==lon) &
+                                (data_curves['DEPTH']>=start_d) &
+                                (data_curves['DEPTH']<=stop_d)]
+                
+                for f in list(df_curve.Formation):
+                    formations.append(f)
+        formations = pd.unique(formations)
+        colors = {f: ('rgba(' + ','.join((str(30+i*10),str(150/(i+1)), str(i*30), str(0.2)))+')') 
+                  for f,i in zip(formations, range(0, len(formations)))
+                 }
+        
+        
+        appeared_formation=[]
+        for i in range(0, cols_):
+                type_curve = selected_rows.iloc[i:i+1]['Type'].values[0]
+                ## Reading data from gds with appropriation type of curve. 
+                ## Second variant - read at the beginning all data to the memmory
+                data_curves = read_curves_csv(client, bucket_for_visualization, 
+                                              folders_name_for_visualization[0], type_curve)
+                columns_curves = data_curves.columns
+                wellname = selected_rows.iloc[i:i+1][new_columns_name[-1]].values[0]
+                lat =  selected_rows.iloc[i:i+1][new_columns_name[1]].values[0]
+                lon =  selected_rows.iloc[i:i+1][new_columns_name[2]].values[0]
+                
+                
+                start_d = selected_rows.iloc[i:i+1][new_columns_name[3]].values[0]
+                stop_d = selected_rows.iloc[i:i+1][new_columns_name[4]].values[0]
+                
+                                        
+                df_curve = data_curves[(data_curves['Well_name']==wellname) & 
                                 (data_curves['lat']==lat) & 
-                               (data_curves['lon']==lon)][columns_curves[1]]
+                                (data_curves['lon']==lon) &
+                                (data_curves['DEPTH']>=start_d) &
+                                (data_curves['DEPTH']<=stop_d)]
+                df_curve = df_curve[~( (df_curve.duplicated(['DEPTH'])))]
+                y = df_curve[columns_curves[0]]
+                x = df_curve[columns_curves[1]]
+                                 
             
-                name = str(lat)+'_'+str(lon)+'_'+wellname + '_'+ type_curve
-                fig.add_trace(go.Scatter(x=x, y=y, mode='lines', name=name), 1, i+1)
+                name = str(lat)+'_'+str(lon)+'_'+ wellname + '_'+ type_curve
+                fig.add_trace(go.Scatter(x=x, y=y, mode='lines', name=str(lat)+'_'+str(lon)+'_'+ wellname + '_'+ type_curve,
+                                         hovertemplate=
+                                                       type_curve+": %{x:.1f}<br><br>" +
+                                                       "Depth: %{y:.1f}<br><br>" +
+                                                       'Well: ' + str(lat)+'_'+str(lon)+'_'+wellname+"<br>" +
+                                                       "<extra></extra>"), 1, i+1)
             
+                columns = df_curve.columns
+                formation_curve = pd.unique(df_curve.Formation)
+                for f in formation_curve:
+                    y_min = df_curve[df_curve['Formation'] ==f].values[0][0]
+                    y_max = df_curve[df_curve['Formation'] ==f].values[-1][0]
+                    
+                    x_min = df_curve[columns[1]].dropna().values.min()
+                    x_max = df_curve[columns[1]].dropna().values.max()
+                    
+                    if f not in appeared_formation:
+                        fig.add_trace(go.Scatter(name = f, x = [x_min, x_min, x_max, x_max, x_min], 
+                                                 y = [y_min, y_max, y_max, y_min, y_min], mode='lines',fill="toself",
+                                                 fillcolor = colors[f], showlegend=True
+                                                ), 1, i+1
+                                      )
+                    else:
+                        fig.add_trace(go.Scatter(name = f, x = [x_min, x_min, x_max, x_max, x_min], 
+                                                 y = [y_min, y_max, y_max, y_min, y_min], mode='lines',fill="toself",
+                                                 fillcolor = colors[f], showlegend=False
+                                                ), 1, i+1
+                                      )
+                    appeared_formation.append(f)    
+                    
+                    
+                
+                
                 if selected_rows.iloc[i:i+1]['Type'].values[0] in list_mnemonics_log500:
                     fig.update_yaxes(autorange="reversed")
                     fig.update_xaxes(type="log",range=[np.log10(1), np.log10(500)],  row=1, col=i+1)
                 elif(selected_rows.iloc[i:i+1]['Type'].values[0]=='NPHI') or\
-                    (selected_rows.iloc[i:i+1]['Type'].values[0]=='PHI'):
+                    (selected_rows.iloc[i:i+1]['Type'].values[0]=='PHI') or\
+                    (selected_rows.iloc[i:i+1]['Type'].values[0]=='SONIC') or\
+                    (selected_rows.iloc[i:i+1]['Type'].values[0]=='DT'):
                     fig.update_yaxes(autorange="reversed")
                     fig.update_xaxes(autorange="reversed", range=[40, -15], row=1, col=i+1)
                 elif(selected_rows.iloc[i:i+1]['Type'].values[0] in list_mnemonics_log2000) or\
@@ -331,32 +475,70 @@ def display_logs(rows, derived_virtual_selected_rows):
                 elif(selected_rows.iloc[i:i+1]['Type'].values[0] in list_mnemonics):
                     fig.update_yaxes(autorange="reversed")
                 
-                numb = find_number_lasfile_name(Keys_las, ('_').join((str(lat), str(lon))))
-                try:
-                        url = client.generate_presigned_url(
+                
+        fig.update_layout(autosize=False,  height=2500, title_text="Curve Log",
+                          yaxis_range=[y.min(),y.max()], hovermode="y unified")
+        fig.layout.template = plotly_theme
+    
+        return  dcc.Graph(id='logs_', figure = fig)#, pd.unique(link)
+
+
+@app.callback(
+              Output("downloading", "children"),
+              Input('curves-table_1', "derived_virtual_data"),
+              Input('curves-table_1', "derived_virtual_selected_rows"),
+              prevent_initial_call=True,
+              )
+def display_las(rows, derived_virtual_selected_rows):
+       
+    if derived_virtual_selected_rows is None:
+        derived_virtual_selected_rows = []
+    
+    if derived_virtual_selected_rows!=[]:
+        df = pd.DataFrame(rows)
+        selected_rows = df[df.index.isin(derived_virtual_selected_rows)]
+        cols_ = selected_rows.shape[0]
+        
+        link = []
+        name_well = []
+        for i in range(0, cols_):
+                wellname = selected_rows.iloc[i:i+1][new_columns_name[-1]].values[0]
+                lat =  selected_rows.iloc[i:i+1][new_columns_name[1]].values[0]
+                lon =  selected_rows.iloc[i:i+1][new_columns_name[2]].values[0]
+                
+                start = float("%.0f" % selected_rows.iloc[i:i+1][new_columns_name[3]].values[0])
+                stop = float("%.0f" % selected_rows.iloc[i:i+1][new_columns_name[4]].values[0])
+                
+                name = ('_').join((str(lat), str(lon), str(start), str(stop), wellname))#str(lat)+'_'+str(lon)+'_'+ wellname
+                
+                numb = find_number_lasfile_name(Keys_las, name)#('_').join((str(lat), str(lon), str(start), str(stop), wellname)))
+                
+                if numb !=-1:
+                    
+                    url = client.generate_presigned_url(
                                                             ClientMethod='get_object',
                                                             Params={'Bucket': bucket_for_download,
                                                                     'Key': Keys_las[numb]
                                                                    }
                                                             )
-                        response = requests.get(url, allow_redirects=True)
-                        filename = Keys_las[numb].split('/')[1]
+                    response = requests.get(url, allow_redirects=True)
+                        #filename = Keys_las[numb].split('/')[1]
+                       
+                
+                else:
+                    name = name + ' - No Las File'
+                    url = 'none'
+                if name not in name_well:
+                    name_well.append(name)
+                    link.append(url)
+    
+        
                         
-                except botocore.exceptions.ClientError as e:
-                    if e.response['Error']['Code'] == "404":
-                        print("The object does not exist.")
-                    else:
-                        raise  
-                link.append(html.A(name,id='lsa-link',href=url))            
-    
-        fig.update_layout(autosize=False,  height=2500, yaxis_range=[y.min(),y.max()])
-        fig.layout.template = 'plotly_dark'
-    
-        return  dcc.Graph(id='logs_', figure = fig), pd.unique(link)
+        return  dbc.ListGroup([dbc.ListGroupItem(name, href=url,
+                                                 className="list-group-item list-group-item-action list-group-item-secondary text-center") if url!='none'
+                               else dbc.ListGroupItem(name, className="list-group-item list-group-item-action list-group-item-secondary text-center")
+                               for name,url in zip(name_well, link)])
 
 
-
-
-                   
 if __name__ == '__main__':
     app.run_server()
