@@ -448,12 +448,26 @@ def display_logs(rows, derived_virtual_selected_rows):
                                                  fillcolor = colors[f], showlegend=True
                                                 ), 1, i+1
                                       )
+                        
+                        fig.add_trace(go.Scatter(name = f, x = [x_min+ (x_max-x_min)/2], y=[y_min+(y_max-y_min)/2],
+                                                 mode='text',line=dict(color="black"),text=[f],
+                                                 textposition="middle center"
+                                                  ), 1, i+1                            
+                                      )
+                        
                     else:
                         fig.add_trace(go.Scatter(name = f, x = [x_min, x_min, x_max, x_max, x_min], 
                                                  y = [y_min, y_max, y_max, y_min, y_min], mode='lines',fill="toself",
                                                  fillcolor = colors[f], showlegend=False
                                                 ), 1, i+1
                                       )
+                        
+                        fig.add_trace(go.Scatter(name = f, x = [x_min+ (x_max-x_min)/2], y=[y_min+(y_max-y_min)/2],
+                                                 mode='text',line=dict(color="black"),text=[f],
+                                                 textposition="middle center"
+                                                  ), 1, i+1                            
+                                      )
+                        
                     appeared_formation.append(f)    
                     
                     
