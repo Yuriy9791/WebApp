@@ -399,7 +399,7 @@ def display_logs(rows, derived_virtual_selected_rows):
         
         
         appeared_formation=[]
-        link_size = [2]
+        link_size = [3]
         for i in range(0, cols_):
                 type_curve = selected_rows.iloc[i:i+1]['Type'].values[0]
                 ## Reading data from gds with appropriation type of curve. 
@@ -437,27 +437,31 @@ def display_logs(rows, derived_virtual_selected_rows):
             
                 columns = df_curve.columns
                 formation_curve = pd.unique(df_curve.Formation)
-                for f in formation_curve:
-                    y_min = df_curve[df_curve['Formation'] ==f].values[0][0]
-                    y_max = df_curve[df_curve['Formation'] ==f].values[-1][0]
+                
+                if len(formation_curve)==1 and (' ' in formation_curve) :
+                    pass
+                else:
+                    for f in formation_curve:
+                        y_min = df_curve[df_curve['Formation'] ==f].values[0][0]
+                        y_max = df_curve[df_curve['Formation'] ==f].values[-1][0]
                     
-                    x_min = df_curve[columns[1]].dropna().values.min()
-                    x_max = df_curve[columns[1]].dropna().values.max()
+                        x_min = df_curve[columns[1]].dropna().values.min()
+                        x_max = df_curve[columns[1]].dropna().values.max()
                     
                     
-                    fig.add_trace(go.Scatter(name = f, x = [x_min, x_min, x_max, x_max, x_min], 
+                        fig.add_trace(go.Scatter(name = f, x = [x_min, x_min, x_max, x_max, x_min], 
                                                  y = [y_min, y_max, y_max, y_min, y_min], mode='lines', line=dict(color="black"),
                                                  fill="toself", fillcolor = colors[f], showlegend=False
                                                 ), 1, i+1
                                       )
                         
-                    fig.add_trace(go.Scatter(name = f, x = [x_min+ (x_max-x_min)/2], y=[y_min+(y_max-y_min)/2],
+                        fig.add_trace(go.Scatter(name = f, x = [x_min+ (x_max-x_min)/2], y=[y_min+(y_max-y_min)/2],
                                                  mode='text',line=dict(color="black"),text=[f],
                                                  textposition="middle center", showlegend=False
                                                   ), 1, i+1                            
                                       )
 
-                    appeared_formation.append(f)    
+                        appeared_formation.append(f)    
                     
                     
                 
@@ -480,7 +484,9 @@ def display_logs(rows, derived_virtual_selected_rows):
                 
                 
         fig.update_layout(autosize=False,  height=2500, title_text="Curve Log",
-                          yaxis_range=[y.min(),y.max()], hovermode="y unified")
+                          #xaxis_range=[x.min()-x.min()*0.1, x.max()+x.max()*0.1],
+                          yaxis_range=[y.min(),y.max()], 
+                          hovermode="y unified")
         fig.layout.template = plotly_theme
     
         return  dcc.Graph(id='logs_', figure = fig)#, pd.unique(link)
