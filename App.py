@@ -399,6 +399,7 @@ def display_logs(rows, derived_virtual_selected_rows):
         
         
         appeared_formation=[]
+        link_size = [2]
         for i in range(0, cols_):
                 type_curve = selected_rows.iloc[i:i+1]['Type'].values[0]
                 ## Reading data from gds with appropriation type of curve. 
@@ -426,7 +427,8 @@ def display_logs(rows, derived_virtual_selected_rows):
                                  
             
                 name = str(lat)+'_'+str(lon)+'_'+ wellname + '_'+ type_curve
-                fig.add_trace(go.Scatter(x=x, y=y, mode='lines', name=str(lat)+'_'+str(lon)+'_'+ wellname + '_'+ type_curve,
+                fig.add_trace(go.Scatter(x=x, y=y, mode='lines', line=dict(width=link_size[0]), 
+                                         name=str(lat)+'_'+str(lon)+'_'+ wellname + '_'+ type_curve,
                                          hovertemplate=
                                                        type_curve+": %{x:.1f}<br><br>" +
                                                        "Depth: %{y:.1f}<br><br>" +
