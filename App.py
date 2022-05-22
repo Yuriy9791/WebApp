@@ -144,7 +144,7 @@ fig_map = px.scatter_mapbox(wells_map[for_maping_list], title='Saudi Arabya Plat
                             lat="lat", lon="lon",  zoom=4, mapbox_style='satellite', height= 800)
 fig_map.layout.template = plotly_theme 
 fig_map.update_layout(clickmode='event+select')
-fig_map.update_traces(marker_size=9, marker_color='red')
+fig_map.update_traces(marker_size=6, marker_color='red')
 
 fig_logs = tools.make_subplots(rows=1, cols=1).\
                                   update_xaxes(side='top', ticklabelposition="inside",
@@ -261,7 +261,7 @@ def update_display_wells(options_chosen):
                                 lat="lat", lon="lon",  zoom=4, mapbox_style='satellite', height= 800)
     fig_map.layout.template = plotly_theme 
     fig_map.update_layout(clickmode='event+select')
-    fig_map.update_traces(marker_size=9, marker_color='red')
+    fig_map.update_traces(marker_size=6, marker_color='red')
     
     return fig_map
 
@@ -434,10 +434,10 @@ def display_logs(rows, derived_virtual_selected_rows):
                                                        "Depth: %{y:.1f}<br><br>" +
                                                        'Well: ' + str(lat)+'_'+str(lon)+'_'+wellname+"<br>" +
                                                        "<extra></extra>"), 1, i+1)
-            
+                #print(df_curve)
                 columns = df_curve.columns
                 formation_curve = pd.unique(df_curve.Formation)
-                
+                #print(formation_curve)
                 if len(formation_curve)==1 and (' ' in formation_curve) :
                     pass
                 else:
