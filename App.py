@@ -129,10 +129,10 @@ wells_map = curves_data[['Age','lat', 'lon', 'Name']]
 wells_map = wells_map.set_index(['lat']).drop_duplicates()
 wells_map = wells_map.rename_axis('lat').reset_index()
 
+
 Keys_las = [obj['Key'] for obj in client.list_objects_v2(Bucket=bucket_for_download, 
                                                                            Prefix=folders_name_for_download[0])\
                                                                            ['Contents']]
-
 #### view ################################################################################################################################################################
 
 for_maping_list = ['lat', 'lon', 'Name']
@@ -302,7 +302,7 @@ def display_click_data(clickData):
             y.append(y_number)
             
         
-        well_curves = curves_data[['Age', 'lat', 'lon', 'Depth_start', 'Depth_finish','Type', 'Name', 'Special_mark']]
+        well_curves = curves_data[list_metadata]#[['Age', 'lat', 'lon', 'Depth_start', 'Depth_finish','Type', 'Name', 'Special_mark']]
         df_ = well_curves[(well_curves['lon'].isin(x)) & (well_curves['lat'].isin(y))]
         
         ## Rename
