@@ -31,22 +31,31 @@ bucket_for_metadata="for-metadata"
 bucket_for_download="transformed-for-download-data"
 folders_name_for_visualization = ['csv/']#['curves', 'stratigraphy']
 folders_name_for_download = ['las/']
-list_metadata_files = ['List_of_curves.csv', 'List_of_data.csv']
+list_metadata_files = ['List_of_curves.csv', 'List_of_data-new.csv']
 # for display information
 list_metadata = ['Age', 'Name', 'Type', 'lat', 'lon', 'Depth_start', 'Depth_finish', 
                  'Special_mark','Reference']
 
-geotime_list = [ 'Eocene', 
-                'Cretaceous',
-                'Jurassic', 
-                'Late Permian_Early Triassic', 
-                'Late Carboniferous_Early Permian',
-               ]
+
+geotime_list = dict()
+geotime_list['Neogene'] = 11
+geotime_list['Paleogene'] = 10
+geotime_list['Cretaceous'] = 9
+geotime_list['Jurassic'] = 8
+geotime_list['Triassic'] = 7
+geotime_list['Permian'] = 6
+geotime_list['Carboniferous'] = 5
+geotime_list['Devonian'] = 4
+geotime_list['Silurian'] = 3
+geotime_list['Ordovican'] = 2
+geotime_list['Cambrian'] = 1
+geotime_list['Precambrian'] = 0
+
 # log curves with different axis scale
 list_mnemonics_log500 = ['']
 list_mnemonics_log2000 =  ['PERM']
 list_mnemonics_RES = ['RESD', 'RESS', 'RES']
-list_mnemonics = ['SO', 'DT', 'RHOB', 'GR', 'SONIC', 'GNT', 'SP']
+list_mnemonics = ['SO', 'DT', 'RHOB', 'GR', 'SONIC', 'GNT', 'SP', 'DTC']
 
 # changing in columns name
 new_columns_name = ['Time', 'Lat', 'Lon', 'Depth_start, feet', 'Depth_finish, feet', 'Well_name']
@@ -125,10 +134,8 @@ table_data = read_resource_metadata_csv(client, bucket_for_metadata, list_metada
                                             geotime_list, make_change=True, num_col=0)
 
 
-wells_map = curves_data[['Age','lat', 'lon', 'Name']] 
-wells_map = wells_map.set_index(['lat']).drop_duplicates()
-wells_map = wells_map.rename_axis('lat').reset_index()
-
+wells_map = curves_data[['Age','lat', 'lon', 'Name']]
+wells_map = wells_map.drop_duplicates(subset=['lat', 'lon']).reset_index(drop=True)
 
 Keys_las = [obj['Key'] for obj in client.list_objects_v2(Bucket=bucket_for_download, 
                                                                            Prefix=folders_name_for_download[0])\
@@ -144,7 +151,7 @@ fig_map = px.scatter_mapbox(wells_map[for_maping_list], title='Saudi Arabya Plat
                             lat="lat", lon="lon",  zoom=4, mapbox_style='satellite', height= 800)
 fig_map.layout.template = plotly_theme 
 fig_map.update_layout(clickmode='event+select')
-fig_map.update_traces(marker_size=6, marker_color='red')
+fig_map.update_traces(marker_size=8, marker_color='red')
 
 fig_logs = tools.make_subplots(rows=1, cols=1).\
                                   update_xaxes(side='top', ticklabelposition="inside",
@@ -159,6 +166,7 @@ Tab_map_view = [
                                      [
                                          html.Br(), html.Br(),
                                          html.H5(children="Geologic Time", style = {'textAlign' : 'center'}),
+                                         html.Br(),
                                          dbc.Card(
                                                    [
                                                      
@@ -190,8 +198,9 @@ Tab_map_view = [
                                   ),
                          ]),          
     
-                 
-                 dbc.Row(
+                html.Br(),
+    
+                dbc.Row(
                          [    
                               dbc.Col([
                                          html.Div(id='curves-table'),
@@ -257,12 +266,34 @@ app.layout = dbc.Container([
     prevent_initial_call=True,    
 )
 def update_display_wells(options_chosen):
-    fig_map = px.scatter_mapbox(wells_map[wells_map['Age'].isin(options_chosen)], title='Saudi Arabya Plate', 
+    
+                
+    wells_map['start_age'] = wells_map['Age'].apply(lambda x: geotime_list[x.split('_')[0]])
+    wells_map['end_age'] = wells_map['Age'].apply(lambda x: geotime_list[x.split('_')[1]] if len(x.split('_'))>1 \
+                                                  else geotime_list[x.split('_')[0]])
+
+    index_wells_map = []
+    wells_tables = [pd.DataFrame(columns=wells_map.columns) for i in range(len(options_chosen))]
+    for opt, i in zip(options_chosen, range(len(wells_tables))):
+        chosen = geotime_list[opt]
+        wells_tables[i] = wells_map[(wells_map['start_age'] <= chosen) & (wells_map['end_age'] >= chosen)]
+
+    wells_table = wells_tables[0]
+    for i in range(1,len(wells_tables)):
+            wells_table = pd.concat([wells_table, wells_tables[i]], axis=0)
+    wells_table = wells_table.drop_duplicates(subset=['lat', 'lon']).reset_index(drop=True)
+
+
+
+    fig_map = px.scatter_mapbox(wells_table, title='Saudi Arabya Plate', 
                                 lat="lat", lon="lon",  zoom=4, mapbox_style='satellite', height= 800)
+    #fig_map = px.scatter_mapbox(wells_map[wells_map['Age'].isin(options_chosen)], title='Saudi Arabya Plate', 
+    #                           lat="lat", lon="lon",  zoom=4, mapbox_style='satellite', height= 800)
+
     fig_map.layout.template = plotly_theme 
     fig_map.update_layout(clickmode='event+select')
-    fig_map.update_traces(marker_size=6, marker_color='red')
-    
+    fig_map.update_traces(marker_size=8, marker_color='red')
+
     return fig_map
 
 
