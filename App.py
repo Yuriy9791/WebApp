@@ -351,10 +351,9 @@ def display_click_data(clickData):
                           style_data={
                                       'color': 'grey',
                                       'backgroundColor': 'white',
-                                      'width': '75px', 'minWidth': '75px', 'maxWidth': '75px',
-                                      'overflow': 'hidden',
-                                      'textOverflow': 'ellipsis'
+                                                                            
                                      },
+                          
                           style_header={
                                         'backgroundColor': 'rgb(210, 210, 210)',
                                         'color': 'grey',
