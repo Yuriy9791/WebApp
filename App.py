@@ -461,7 +461,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                 fig.add_trace(go.Scatter(x=x, y=y, mode='lines', line=dict(width=link_size[0]), 
                                          name=str(lat)+'_'+str(lon)+'_'+ wellname + '_'+ type_curve,
                                          hovertemplate=
-                                                       type_curve+": %{x:.1f}<br><br>" +
+                                                       type_curve+": %{x:.2f}<br><br>" +
                                                        "Depth: %{y:.1f}<br><br>" +
                                                        'Well: ' + str(lat)+'_'+str(lon)+'_'+wellname+"<br>" +
                                                        "<extra></extra>"), 1, i+1)
