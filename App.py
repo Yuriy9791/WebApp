@@ -429,7 +429,7 @@ def display_logs(rows, derived_virtual_selected_rows):
         
         
         appeared_formation=[]
-        link_size = [3]
+        link_size = [2]
         for i in range(0, cols_):
                 type_curve = selected_rows.iloc[i:i+1]['Type'].values[0]
                 ## Reading data from gds with appropriation type of curve. 
