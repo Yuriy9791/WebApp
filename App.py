@@ -148,7 +148,7 @@ dash_theme = dbc.themes.FLATLY#SUPERHERO #'CYBORG'
 
 px.set_mapbox_access_token(token)
 fig_map = px.scatter_mapbox(wells_map[for_maping_list], title='Saudi Arabya Plate',
-                            lat="lat", lon="lon",  zoom=4, mapbox_style='satellite', height= 800)
+                            lat="lat", lon="lon", hover_name=wells_map.Name, zoom=4, mapbox_style='satellite', height= 800)
 fig_map.layout.template = plotly_theme 
 fig_map.update_layout(clickmode='event+select')
 fig_map.update_traces(marker_size=8, marker_color='red')
