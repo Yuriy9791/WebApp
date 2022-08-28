@@ -86,14 +86,15 @@ def find_number_file_name(list_dir, key_word):
 
 def find_number_lasfile_name(list_dir, key_word):
     j = -1
-    for i in range(1, len(list_dir)):
+    for i in range(0, len(list_dir)):
         s1 = list_dir[i]
         
         filename = s1.split('/')[-1]
         mnemonics = filename.split('.las')[0]
-        #print('mnemon-',mnemonics, 'key_word-', key_word)
+        print('mnemon-',mnemonics, 'key_word-', key_word)
         if mnemonics == key_word:
             j = i
+            break
     
     return j
 
@@ -140,6 +141,7 @@ wells_map = wells_map.drop_duplicates(subset=['lat', 'lon']).reset_index(drop=Tr
 Keys_las = [obj['Key'] for obj in client.list_objects_v2(Bucket=bucket_for_download, 
                                                                            Prefix=folders_name_for_download[0])\
                                                                            ['Contents']]
+
 #### view ################################################################################################################################################################
 
 for_maping_list = ['lat', 'lon', 'Name']
@@ -148,7 +150,7 @@ dash_theme = dbc.themes.FLATLY#SUPERHERO #'CYBORG'
 
 px.set_mapbox_access_token(token)
 fig_map = px.scatter_mapbox(wells_map[for_maping_list], title='Saudi Arabya Plate',
-                            lat="lat", lon="lon", hover_name=wells_map.Name, zoom=4, mapbox_style='satellite', height= 800)
+                            lat="lat", lon="lon",  hover_name=wells_map.Name, zoom=4, mapbox_style='satellite', height= 800)
 fig_map.layout.template = plotly_theme 
 fig_map.update_layout(clickmode='event+select')
 fig_map.update_traces(marker_size=8, marker_color='red')
@@ -282,7 +284,7 @@ def update_display_wells(options_chosen):
     for i in range(1,len(wells_tables)):
             wells_table = pd.concat([wells_table, wells_tables[i]], axis=0)
     wells_table = wells_table.drop_duplicates(subset=['lat', 'lon']).reset_index(drop=True)
-
+    print(wells_table)
 
 
     fig_map = px.scatter_mapbox(wells_table, title='Saudi Arabya Plate', 
@@ -457,7 +459,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                                  
             
                 name = str(lat)+'_'+str(lon)+'_'+ wellname + '_'+ type_curve
-                fig.add_trace(go.Scatter(x=x, y=y, mode='lines', line=dict(width=link_size[0]), 
+                fig.add_trace(go.Scatter(x=x, y=y, mode='lines', line=dict(width = link_size[0]), 
                                          name=str(lat)+'_'+str(lon)+'_'+ wellname + '_'+ type_curve,
                                          hovertemplate=
                                                        type_curve+": %{x:.2f}<br><br>" +
@@ -562,11 +564,12 @@ def display_las(rows, derived_virtual_selected_rows):
                                                             )
                     response = requests.get(url, allow_redirects=True)
                         #filename = Keys_las[numb].split('/')[1]
-                       
+                      
                 
                 else:
                     name = name + ' - No Las File'
                     url = 'none'
+                    
                 if name not in name_well:
                     name_well.append(name)
                     link.append(url)
