@@ -465,7 +465,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                     
                     
                         fig.add_trace(go.Scatter(name = f, 
-                                                 x = [-70, -70, 0, 0, -70],#[x_min, x_min, x_max, x_max, x_min], 
+                                                 x = [-90, -90, 0, 0, -90],#[x_min, x_min, x_max, x_max, x_min], 
                                                  y = [y_min, y_max, y_max, y_min, y_min], 
                                                  mode='lines', line=dict(color="black"),
                                                  fill="toself", fillcolor = colors[f], showlegend=False
@@ -473,7 +473,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                                       )
                         
                         fig.add_trace(go.Scatter(name = f, 
-                                                 x = [-70 + (0 + 70)/2],#[x_min + (x_max-x_min)/2], 
+                                                 x = [-90 + (0 + 90)/2],#[x_min + (x_max-x_min)/2], 
                                                  y=[y_min + (y_max-y_min)/2],
                                                  mode='text',line=dict(color="black"),text=[f],
                                                  textposition="middle center", showlegend=False
