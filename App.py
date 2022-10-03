@@ -38,6 +38,7 @@ list_metadata = ['Age', 'Name', 'Type', 'lat', 'lon', 'Depth_start', 'Depth_fini
 
 
 geotime_list = dict()
+geotime_list['Pleistocene'] = 12
 geotime_list['Neogene'] = 11
 geotime_list['Paleogene'] = 10
 geotime_list['Cretaceous'] = 9
@@ -54,7 +55,7 @@ geotime_list['Precambrian'] = 0
 # log curves with different axis scale
 list_mnemonics_log500 = ['']
 list_mnemonics_log2000 =  ['PERM']
-list_mnemonics_RES = ['RESD', 'RESS', 'RES']
+list_mnemonics_RES = ['RESD', 'RESS', 'RES', 'SFLU']
 list_mnemonics = ['SO', 'DT', 'RHOB', 'GR', 'SONIC', 'GNT', 'SP', 'DTC']
 
 # changing in columns name
@@ -91,7 +92,6 @@ def find_number_lasfile_name(list_dir, key_word):
         
         filename = s1.split('/')[-1]
         mnemonics = filename.split('.las')[0]
-        print('mnemon-',mnemonics, 'key_word-', key_word)
         if mnemonics == key_word:
             j = i
             break
@@ -135,7 +135,7 @@ table_data = read_resource_metadata_csv(client, bucket_for_metadata, list_metada
                                             geotime_list, make_change=True, num_col=0)
 
 
-wells_map = curves_data[['Age','lat', 'lon', 'Name']]
+wells_map =  curves_data.copy() # curves_data[['Age','lat', 'lon', 'Name']]
 wells_map = wells_map.drop_duplicates(subset=['lat', 'lon']).reset_index(drop=True)
 
 Keys_las = [obj['Key'] for obj in client.list_objects_v2(Bucket=bucket_for_download, 
@@ -146,7 +146,7 @@ Keys_las = [obj['Key'] for obj in client.list_objects_v2(Bucket=bucket_for_downl
 
 for_maping_list = ['lat', 'lon', 'Name']
 plotly_theme = 'seaborn'#'plotly_dark'#'ggplot2'#'plotly'#'simple_white' #
-dash_theme = dbc.themes.FLATLY#SUPERHERO #'CYBORG'
+dash_theme = dbc.themes.FLATLY#CYBORG #SUPERHERO #
 
 px.set_mapbox_access_token(token)
 fig_map = px.scatter_mapbox(wells_map[for_maping_list], title='Saudi Arabya Plate',
@@ -269,29 +269,12 @@ app.layout = dbc.Container([
 )
 def update_display_wells(options_chosen):
     
-                
-    wells_map['start_age'] = wells_map['Age'].apply(lambda x: geotime_list[x.split('_')[0]])
-    wells_map['end_age'] = wells_map['Age'].apply(lambda x: geotime_list[x.split('_')[1]] if len(x.split('_'))>1 \
-                                                  else geotime_list[x.split('_')[0]])
-
-    index_wells_map = []
-    wells_tables = [pd.DataFrame(columns=wells_map.columns) for i in range(len(options_chosen))]
-    for opt, i in zip(options_chosen, range(len(wells_tables))):
-        chosen = geotime_list[opt]
-        wells_tables[i] = wells_map[(wells_map['start_age'] <= chosen) & (wells_map['end_age'] >= chosen)]
-
-    wells_table = wells_tables[0]
-    for i in range(1,len(wells_tables)):
-            wells_table = pd.concat([wells_table, wells_tables[i]], axis=0)
-    wells_table = wells_table.drop_duplicates(subset=['lat', 'lon']).reset_index(drop=True)
-    print(wells_table)
-
-
-    fig_map = px.scatter_mapbox(wells_table, title='Saudi Arabya Plate', 
+    wells_map['intersection_time'] = wells_map['Age'].apply(lambda x: 0 if set(x.split('_')).intersection(set((options_chosen)))==set()\
+                                                           else 1)
+    wells_table =  wells_map[wells_map['intersection_time'] !=0]  
+    
+    fig_map = px.scatter_mapbox(wells_table, title='Saudi Arabya Plate', hover_name=wells_table.Name,
                                 lat="lat", lon="lon",  zoom=4, mapbox_style='satellite', height= 800)
-    #fig_map = px.scatter_mapbox(wells_map[wells_map['Age'].isin(options_chosen)], title='Saudi Arabya Plate', 
-    #                           lat="lat", lon="lon",  zoom=4, mapbox_style='satellite', height= 800)
-
     fig_map.layout.template = plotly_theme 
     fig_map.update_layout(clickmode='event+select')
     fig_map.update_traces(marker_size=8, marker_color='red')
@@ -335,7 +318,7 @@ def display_click_data(clickData):
             y.append(y_number)
             
         
-        well_curves = curves_data[list_metadata]#[['Age', 'lat', 'lon', 'Depth_start', 'Depth_finish','Type', 'Name', 'Special_mark']]
+        well_curves = curves_data[list_metadata] #well_table_display[list_metadata] # [['Age', 'lat', 'lon', 'Depth_start', 'Depth_finish','Type', 'Name', 'Special_mark']]
         df_ = well_curves[(well_curves['lon'].isin(x)) & (well_curves['lat'].isin(y))]
         
         ## Rename
@@ -481,13 +464,17 @@ def display_logs(rows, derived_virtual_selected_rows):
                         x_max = df_curve[columns[1]].dropna().values.max()
                     
                     
-                        fig.add_trace(go.Scatter(name = f, x = [x_min, x_min, x_max, x_max, x_min], 
-                                                 y = [y_min, y_max, y_max, y_min, y_min], mode='lines', line=dict(color="black"),
+                        fig.add_trace(go.Scatter(name = f, 
+                                                 x = [-70, -70, 0, 0, -70],#[x_min, x_min, x_max, x_max, x_min], 
+                                                 y = [y_min, y_max, y_max, y_min, y_min], 
+                                                 mode='lines', line=dict(color="black"),
                                                  fill="toself", fillcolor = colors[f], showlegend=False
                                                 ), 1, i+1
                                       )
                         
-                        fig.add_trace(go.Scatter(name = f, x = [x_min+ (x_max-x_min)/2], y=[y_min+(y_max-y_min)/2],
+                        fig.add_trace(go.Scatter(name = f, 
+                                                 x = [-70 + (0 + 70)/2],#[x_min + (x_max-x_min)/2], 
+                                                 y=[y_min + (y_max-y_min)/2],
                                                  mode='text',line=dict(color="black"),text=[f],
                                                  textposition="middle center", showlegend=False
                                                   ), 1, i+1                            
@@ -547,8 +534,8 @@ def display_las(rows, derived_virtual_selected_rows):
                 lat =  selected_rows.iloc[i:i+1][new_columns_name[1]].values[0]
                 lon =  selected_rows.iloc[i:i+1][new_columns_name[2]].values[0]
                 
-                start = float("%.0f" % selected_rows.iloc[i:i+1][new_columns_name[3]].values[0])
-                stop = float("%.0f" % selected_rows.iloc[i:i+1][new_columns_name[4]].values[0])
+                start = float("%.1f" % selected_rows.iloc[i:i+1][new_columns_name[3]].values[0])
+                stop = float("%.1f" % selected_rows.iloc[i:i+1][new_columns_name[4]].values[0])
                 
                 name = ('_').join((str(lat), str(lon), str(start), str(stop), wellname))#str(lat)+'_'+str(lon)+'_'+ wellname
                 
