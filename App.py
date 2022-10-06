@@ -61,6 +61,16 @@ list_mnemonics = ['SO', 'DT', 'RHOB', 'GR', 'SONIC', 'GNT', 'SP', 'DTC']
 # changing in columns name
 new_columns_name = ['Time', 'Lat', 'Lon', 'Depth_start, feet', 'Depth_finish, feet', 'Well_name']
 
+# color curve
+color_curve = {
+               'GR': 'green',
+               'DT': 'red',
+               'SONIC': 'red',
+               'NPHI': 'blue',
+               'RHOB': 'DeepPink ',
+               'SP': 'CornflowerBlue '
+               
+               }
 
 #### model ##############################################################################################################################################################
 
@@ -383,37 +393,48 @@ def display_logs(rows, derived_virtual_selected_rows):
                                                title_standoff = 10)
        
         formations = []
+        times = []
         for i in range(0, cols_):
-                type_curve = selected_rows.iloc[i:i+1]['Type'].values[0]
+            type_curve = selected_rows.iloc[i:i+1]['Type'].values[0]
                 ## Reading data from gds with appropriation type of curve. 
                 ## Second variant - read at the beginning all data to the memmory
-                data_curves = read_curves_csv(client, bucket_for_visualization, 
+            data_curves = read_curves_csv(client, bucket_for_visualization, 
                                               folders_name_for_visualization[0], type_curve)
-                columns_curves = data_curves.columns
-                wellname = selected_rows.iloc[i:i+1][new_columns_name[-1]].values[0]
-                lat =  selected_rows.iloc[i:i+1][new_columns_name[1]].values[0]
-                lon =  selected_rows.iloc[i:i+1][new_columns_name[2]].values[0]
+            columns_curves = data_curves.columns
+            wellname = selected_rows.iloc[i:i+1][new_columns_name[-1]].values[0]
+            lat =  selected_rows.iloc[i:i+1][new_columns_name[1]].values[0]
+            lon =  selected_rows.iloc[i:i+1][new_columns_name[2]].values[0]
                 
-                
-                start_d = selected_rows.iloc[i:i+1][new_columns_name[3]].values[0]
-                stop_d = selected_rows.iloc[i:i+1][new_columns_name[4]].values[0]
+            start_d = selected_rows.iloc[i:i+1][new_columns_name[3]].values[0]
+            stop_d = selected_rows.iloc[i:i+1][new_columns_name[4]].values[0]
                 
                                         
-                df_curve = data_curves[(data_curves['Well_name']==wellname) & 
+            df_curve = data_curves[(data_curves['Well_name']==wellname) & 
                                 (data_curves['lat']==lat) & 
                                 (data_curves['lon']==lon) &
                                 (data_curves['DEPTH']>=start_d) &
                                 (data_curves['DEPTH']<=stop_d)]
                 
-                for f in list(df_curve.Formation):
-                    formations.append(f)
+                                     
+            for f in list(df_curve.Formation):
+                formations.append(f)
+                
+            for t in list(df_curve.Time):
+                times.append(t)
+                
         formations = pd.unique(formations)
         colors = {f: ('rgba(' + ','.join((str(60+i*10),str(256/(i+1)), str(i*15), str(0.2)))+')') 
                   for f,i in zip(formations, range(0, len(formations)))
                  }
         
+        times = pd.unique(times)
+        colors_t = {t: ('rgba(' + ','.join((str(60+i*10),str(256/(i+1)), str(i*15), str(0.2)))+')') 
+                  for t,i in zip(times, range(0, len(times)))
+                 }
         
+                              
         appeared_formation=[]
+        appeared_time=[]
         link_size = [2]
         for i in range(0, cols_):
                 type_curve = selected_rows.iloc[i:i+1]['Type'].values[0]
@@ -443,7 +464,8 @@ def display_logs(rows, derived_virtual_selected_rows):
             
                 name = str(lat)+'_'+str(lon)+'_'+ wellname + '_'+ type_curve
                 fig.add_trace(go.Scatter(x=x, y=y, mode='lines', line=dict(width = link_size[0]), 
-                                         name=str(lat)+'_'+str(lon)+'_'+ wellname + '_'+ type_curve,
+                                         marker_color=color_curve[type_curve],
+                                         name=str(lat)+'_'+str(lon)+'_'+ wellname + '_'+ type_curve, 
                                          hovertemplate=
                                                        type_curve+": %{x:.2f}<br><br>" +
                                                        "Depth: %{y:.1f}<br><br>" +
@@ -452,20 +474,37 @@ def display_logs(rows, derived_virtual_selected_rows):
                 #print(df_curve)
                 columns = df_curve.columns
                 formation_curve = pd.unique(df_curve.Formation)
-                #print(formation_curve)
+                time_curve = pd.unique(df_curve.Time)
+                # Formation visualization
                 if len(formation_curve)==1 and (' ' in formation_curve) :
                     pass
                 else:
+                    k = 0
                     for f in formation_curve:
                         y_min = df_curve[df_curve['Formation'] ==f].values[0][0]
                         y_max = df_curve[df_curve['Formation'] ==f].values[-1][0]
                     
                         x_min = df_curve[columns[1]].dropna().values.min()
                         x_max = df_curve[columns[1]].dropna().values.max()
-                    
-                    
+                        
+                        x_min_f =  x_min - (x_max - x_min) * 0.5#- (x_max - x_min) * 0.55
+                        x_max_f = x_min#0
+                        
+                        if k==0:
+                            fig.add_trace(go.Scatter(name = f, 
+                                                 x = [x_min_f + (x_max_f - x_min_f)/2],#[x_min + (x_max-x_min)/2], 
+                                                 y=[0 - 20],
+                                                 mode='text',line=dict(color="black"),
+                                                 text=['FORMATION'],
+                                                 textposition="middle center", showlegend=False, 
+                                                 ), 1, i+1                            
+                                          )
+                            k +=1
+                        
                         fig.add_trace(go.Scatter(name = f, 
-                                                 x = [-90, -90, 0, 0, -90],#[x_min, x_min, x_max, x_max, x_min], 
+                                                 x = [x_min_f, x_min_f, 
+                                                      x_max_f, x_max_f, x_min_f
+                                                     ],#[x_min, x_min, x_max, x_max, x_min], 
                                                  y = [y_min, y_max, y_max, y_min, y_min], 
                                                  mode='lines', line=dict(color="black"),
                                                  fill="toself", fillcolor = colors[f], showlegend=False
@@ -473,17 +512,59 @@ def display_logs(rows, derived_virtual_selected_rows):
                                       )
                         
                         fig.add_trace(go.Scatter(name = f, 
-                                                 x = [-90 + (0 + 90)/2],#[x_min + (x_max-x_min)/2], 
+                                                 x = [x_min_f + (x_max_f - x_min_f)/2],#[x_min + (x_max-x_min)/2], 
                                                  y=[y_min + (y_max-y_min)/2],
                                                  mode='text',line=dict(color="black"),text=[f],
-                                                 textposition="middle center", showlegend=False
-                                                  ), 1, i+1                            
+                                                 textposition="middle center", showlegend=False, 
+                                                 ), 1, i+1                            
                                       )
 
+
                         appeared_formation.append(f)    
+                                 
+                # GeoTime visualization
+                if len(time_curve)==1 and (' ' in time_curve) :
+                    pass
+                elif columns[1]=='GR':
+                    b = 0
+                    for t in time_curve:
+                        y_min = df_curve[df_curve['Time'] ==t].values[0][0]
+                        y_max = df_curve[df_curve['Time'] ==t].values[-1][0]
                     
+                        x_min = df_curve[columns[1]].dropna().values.min()
+                        x_max = df_curve[columns[1]].dropna().values.max()
+                        x_min_t =  x_min_f * 2
+                        x_max_t =  x_min_t * 0.5
+                        
+                        if b == 0:
+                            fig.add_trace(go.Scatter(name = t, 
+                                                 x = [x_min_t + (x_max_t-x_min_t)/2], 
+                                                 y=[0 - 20],
+                                                 mode='text',line=dict(color="black"),
+                                                 text=['PERIOD'],
+                                                 textposition="middle center", showlegend=False,
+                                                  ), 1, i+1                            
+                                      )
+                            b +=1
+                        
+                        fig.add_trace(go.Scatter(name = t, 
+                                                 x = [x_min_t, x_min_t, x_max_t, x_max_t, x_min_t],#[x_min, x_min, x_max, x_max, x_min], 
+                                                 y = [y_min, y_max, y_max, y_min, y_min], 
+                                                 mode='lines', line=dict(color="black"),
+                                                  showlegend=False
+                                                ), 1, i+1
+                                      )
+                        
+                        fig.add_trace(go.Scatter(name = t, 
+                                                 x = [x_min_t + (x_max_t-x_min_t)/2], 
+                                                 y=[y_min + (y_max-y_min)/2],
+                                                 mode='text',line=dict(color="black"),text=[t],
+                                                 textposition="middle center", showlegend=False,
+                                                  ), 1, i+1                            
+                                      )
+                        
+                        appeared_time.append(t)    
                     
-                
                 
                 if selected_rows.iloc[i:i+1]['Type'].values[0] in list_mnemonics_log500:
                     fig.update_yaxes(autorange="reversed")
