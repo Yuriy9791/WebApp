@@ -1,4 +1,3 @@
-##%%writefile 'App.py'
 import re
 import json
 import dash
@@ -528,6 +527,10 @@ def display_logs(rows, derived_virtual_selected_rows):
                 elif columns[1]=='GR':
                     b = 0
                     for t in time_curve:
+                        color_t = 'FloralWhite '
+                        if t == 'CRETACEOUS':
+                            color_t = 'DarkGoldenRod '
+                            
                         y_min = df_curve[df_curve['Time'] ==t].values[0][0]
                         y_max = df_curve[df_curve['Time'] ==t].values[-1][0]
                     
@@ -548,10 +551,11 @@ def display_logs(rows, derived_virtual_selected_rows):
                             b +=1
                         
                         fig.add_trace(go.Scatter(name = t, 
-                                                 x = [x_min_t, x_min_t, x_max_t, x_max_t, x_min_t],#[x_min, x_min, x_max, x_max, x_min], 
+                                                 x = [x_min_t, x_min_t, x_max_t, x_max_t, x_min_t],
                                                  y = [y_min, y_max, y_max, y_min, y_min], 
                                                  mode='lines', line=dict(color="black"),
-                                                  showlegend=False
+                                                 fill="toself", fillcolor = color_t,
+                                                 showlegend=False
                                                 ), 1, i+1
                                       )
                         
