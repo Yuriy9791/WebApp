@@ -524,9 +524,10 @@ def display_logs(rows, derived_virtual_selected_rows):
                         appeared_formation.append(f)    
                                  
                 # GeoTime visualization
+                type_curve = ['GR', 'SGR']
                 if len(time_curve)==1 and (' ' in time_curve) :
                     pass
-                elif columns[1]=='GR':
+                elif columns[1] in type_curve: #=='GR' or :
                     b = 0
                     for t in time_curve:
                         color_t = 'FloralWhite '
