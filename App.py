@@ -500,7 +500,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                         if k==0:
                             fig.add_trace(go.Scatter(name = f, 
                                                  x = [x_min_f + (x_max_f - x_min_f)/2],#[x_min + (x_max-x_min)/2], 
-                                                 y = [y_min - 7],
+                                                 y = [y_min - 23],
                                                  mode='text',line=dict(color="black"),
                                                  text=['FORMATION'],
                                                  textposition="middle center", showlegend=False, 
@@ -551,7 +551,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                         if b == 0:
                             fig.add_trace(go.Scatter(name = t, 
                                                  x = [x_min_t + (x_max_t-x_min_t)/2], 
-                                                 y = [y_min - 7],
+                                                 y = [y_min - 23],
                                                  mode='text',line=dict(color="black"),
                                                  text=['PERIOD'],
                                                  textposition="middle center", showlegend=False,
