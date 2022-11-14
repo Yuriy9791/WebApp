@@ -64,13 +64,19 @@ new_columns_name = ['Time', 'Lat', 'Lon', 'Depth_start, feet', 'Depth_finish, fe
 color_curve = {
                'GR': 'green',
                'SGR': 'green',
+               'GNT': 'green',
                'DT': 'red',
                'SONIC': 'red',
                'NPHI': 'blue',
+               'PHI': 'blue',
+               'PERM': 'blue',
                'RHOB': 'DeepPink ',
                'SP':    'CornflowerBlue',
-               'SFLU':  'CornflowerBlue'
-               
+               'SFLU':  'CornflowerBlue',
+               'RES' :  'CornflowerBlue',
+               'RESD' :  'CornflowerBlue',
+               'RESS' :  'CornflowerBlue',
+                            
                }
 
 #### model ##############################################################################################################################################################
@@ -494,7 +500,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                         if k==0:
                             fig.add_trace(go.Scatter(name = f, 
                                                  x = [x_min_f + (x_max_f - x_min_f)/2],#[x_min + (x_max-x_min)/2], 
-                                                 y=[0 - 20],
+                                                 y = [y_min - 7],
                                                  mode='text',line=dict(color="black"),
                                                  text=['FORMATION'],
                                                  textposition="middle center", showlegend=False, 
@@ -545,7 +551,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                         if b == 0:
                             fig.add_trace(go.Scatter(name = t, 
                                                  x = [x_min_t + (x_max_t-x_min_t)/2], 
-                                                 y=[0 - 20],
+                                                 y = [y_min - 7],
                                                  mode='text',line=dict(color="black"),
                                                  text=['PERIOD'],
                                                  textposition="middle center", showlegend=False,
