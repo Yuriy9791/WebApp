@@ -463,7 +463,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                                 (data_curves['lat']==lat) & 
                                 (data_curves['lon']==lon) &
                                 (data_curves['DEPTH']>=start_d) &
-                                (data_curves['DEPTH']<=stop_d+1)]
+                                (data_curves['DEPTH']<=stop_d)]
                 df_curve = df_curve[~( (df_curve.duplicated(['DEPTH'])))]
                 y = df_curve[columns_curves[0]]
                 x = df_curve[columns_curves[1]]
