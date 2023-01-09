@@ -549,8 +549,8 @@ def display_logs(rows, derived_virtual_selected_rows):
                         x_max = df_curve[columns[1]].dropna().values.max()
                         
                         x_min_ = x_min * 0.9
-                        x_min_t =  x_min - (x_max - x_min_) * 0.5 * 2
-                        x_max_t = x_min - (x_max - x_min_) * 0.5
+                        x_min_t =  x_min_ - (x_max - x_min_) * 0.5 * 2
+                        x_max_t = x_min_ - (x_max - x_min_) * 0.5
                         
                         if b == 0:
                             x_t = [x_min_t + (x_max_t-x_min_t)/2]
