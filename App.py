@@ -494,13 +494,17 @@ def display_logs(rows, derived_virtual_selected_rows):
                         x_min = df_curve[columns[1]].dropna().values.min()
                         x_max = df_curve[columns[1]].dropna().values.max()
                         
-                        x_min_f =  x_min - (x_max - x_min) * 0.5#- (x_max - x_min) * 0.55
-                        x_max_f = x_min#0
+                        x_min_ = x_min * 0.9
+                        x_min_f =  x_min_ - (x_max - x_min_) * 0.5
+                        x_max_f = x_min_
                         
                         if k==0:
+                            x_f = [x_min_f + (x_max_f - x_min_f)/2]
+                            dy = df_curve['DEPTH'].values[-1]
+                            y_f_name = [y_min - 0.01 * dy]
                             fig.add_trace(go.Scatter(name = f, 
-                                                 x = [x_min_f + (x_max_f - x_min_f)/2],#[x_min + (x_max-x_min)/2], 
-                                                 y = [y_min - 8],
+                                                 x = x_f, 
+                                                 y = y_f_name,
                                                  mode='text',line=dict(color="black"),
                                                  text=['FORMATION'],
                                                  textposition="middle center", showlegend=False, 
@@ -509,9 +513,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                             k +=1
                         
                         fig.add_trace(go.Scatter(name = f, 
-                                                 x = [x_min_f, x_min_f, 
-                                                      x_max_f, x_max_f, x_min_f
-                                                     ],#[x_min, x_min, x_max, x_max, x_min], 
+                                                 x = [x_min_f, x_min_f, x_max_f, x_max_f, x_min_f],
                                                  y = [y_min, y_max, y_max, y_min, y_min], 
                                                  mode='lines', line=dict(color="black"),
                                                  fill="toself", fillcolor = colors[f], showlegend=False
@@ -545,13 +547,18 @@ def display_logs(rows, derived_virtual_selected_rows):
                     
                         x_min = df_curve[columns[1]].dropna().values.min()
                         x_max = df_curve[columns[1]].dropna().values.max()
-                        x_min_t =  x_min_f * 2
-                        x_max_t =  x_min_t * 0.5
+                        
+                        x_min_ = x_min * 0.9
+                        x_min_t =  x_min - (x_max - x_min_) * 0.5 * 2
+                        x_max_t = x_min - (x_max - x_min_) * 0.5
                         
                         if b == 0:
+                            x_t = [x_min_t + (x_max_t-x_min_t)/2]
+                            dy = df_curve['DEPTH'].values[-1]
+                            y_t_name = [y_min - 0.01 * dy] 
                             fig.add_trace(go.Scatter(name = t, 
                                                  x = [x_min_t + (x_max_t-x_min_t)/2], 
-                                                 y = [y_min - 8],
+                                                 y = y_t_name,
                                                  mode='text',line=dict(color="black"),
                                                  text=['PERIOD'],
                                                  textposition="middle center", showlegend=False,
