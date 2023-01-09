@@ -494,7 +494,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                         x_min = df_curve[columns[1]].dropna().values.min()
                         x_max = df_curve[columns[1]].dropna().values.max()
                         
-                        x_min_ = x_min * 0.9
+                        x_min_ = x_min * 0.6
                         x_min_f =  x_min_ - (x_max - x_min_) * 0.5
                         x_max_f = x_min_
                         
@@ -548,7 +548,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                         x_min = df_curve[columns[1]].dropna().values.min()
                         x_max = df_curve[columns[1]].dropna().values.max()
                         
-                        x_min_ = x_min * 0.9
+                        x_min_ = x_min * 0.6
                         x_min_t =  x_min_ - (x_max - x_min_) * 0.5 * 2
                         x_max_t = x_min_ - (x_max - x_min_) * 0.5
                         
