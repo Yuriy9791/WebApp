@@ -394,7 +394,9 @@ def display_logs(rows, derived_virtual_selected_rows):
         selected_rows = df[df.index.isin(derived_virtual_selected_rows)]
         cols_ = selected_rows.shape[0]
         
-        titles = [selected_rows.iloc[i:i+1]['Type'].values[0] for i in range(cols_)]
+        titles = [selected_rows.iloc[i:i+1]['Type'].values[0]+', '+
+                  selected_rows.iloc[i:i+1]['Well_name'].values[0]
+                  for i in range(cols_)]  
         fig = tools.make_subplots(rows=1, cols=cols_, subplot_titles=titles).\
                                   update_xaxes(side='top', ticklabelposition="inside",
                                                title_standoff = 10)
