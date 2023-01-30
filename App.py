@@ -172,10 +172,6 @@ fig_map.layout.template = plotly_theme
 fig_map.update_layout(clickmode='event+select')
 fig_map.update_traces(marker_size=8, marker_color='red')
 
-fig_logs = tools.make_subplots(rows=1, cols=1).\
-                                  update_xaxes(side='top', ticklabelposition="inside",
-                                               title_standoff = 1)
-
 
 Tab_map_view = [
                  dbc.Row(
