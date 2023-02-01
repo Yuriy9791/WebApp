@@ -694,13 +694,10 @@ def change_map(rows, derived_virtual_selected_rows):
     if derived_virtual_selected_rows is None:
         derived_virtual_selected_rows = []
         pass
-        #return scatter_plot_graph
-    
+            
     if derived_virtual_selected_rows!=[]:
-        
         df = pd.DataFrame(rows)
         selected_rows = df[df.index.isin(derived_virtual_selected_rows)]
-        print(selected_rows.columns)       
         fig_map_ = px.scatter_mapbox(selected_rows, hover_name=selected_rows.Well_name,
                                 lat="Lat", lon="Lon",  zoom=4, mapbox_style='satellite')
         fig_map_.layout.template = plotly_theme 
