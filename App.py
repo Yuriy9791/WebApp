@@ -238,7 +238,7 @@ Tab_log_view = [
                  dbc.Row(
                           [
                            
-                           dbc.Col(dbc.Container(html.Div(id='logs'), fluid=True), width=4, md={'size': 10, "offset": 0, 'order': 1}),
+                           dbc.Col(dbc.Container(html.Div(id='logs'), fluid=True), width=4, md={'size': 8, "offset": 0, 'order': 1}),
                            dbc.Col( [
                                       html.Br(),
                                       html.Br(),
@@ -249,7 +249,7 @@ Tab_log_view = [
                                       html.H5(children="Choosen Wells", style = {'textAlign' : 'center'}),
                                       dbc.Container(html.Div(id='choosen-wells')),
                                       
-                                    ], width=4, md={'size': 2, "offset": 0, 'order': 2}),
+                                    ], width=4, md={'size': 4, "offset": 0, 'order': 2}),
                               
                               
                           ]
