@@ -1,3 +1,4 @@
+##%%writefile 'App.py'
 import re
 import json
 import dash
@@ -172,6 +173,9 @@ fig_map.layout.template = plotly_theme
 fig_map.update_layout(clickmode='event+select')
 fig_map.update_traces(marker_size=8, marker_color='red')
 
+#fig_logs = tools.make_subplots(rows=1, cols=1).\
+#                                  update_xaxes(side='top', ticklabelposition="inside",
+#                                               title_standoff = 1)
 
 Tab_map_view = [
                  dbc.Row(
@@ -234,14 +238,20 @@ Tab_log_view = [
                  dbc.Row(
                           [
                            
-                           dbc.Col(dbc.Container(html.Div(id='logs'), fluid=True), width=4, md={'size': 9, "offset": 1, 'order': 1}),
+                           dbc.Col(dbc.Container(html.Div(id='logs'), fluid=True), width=4, md={'size': 10, "offset": 0, 'order': 1}),
                            dbc.Col( [
                                       html.Br(),
                                       html.Br(),
-                                      html.Br(),
                                       html.H5(children="LAS Files", style = {'textAlign' : 'center'}),
-                                      html.Div(id='downloading')
+                                      html.Div(id='downloading'),
+                                      html.Br(),
+                                      html.Br(),
+                                      html.H5(children="Choosen Wells", style = {'textAlign' : 'center'}),
+                                      dbc.Container(html.Div(id='choosen-wells')),
+                                      
                                     ], width=4, md={'size': 2, "offset": 0, 'order': 2}),
+                              
+                              
                           ]
                          ),
     
@@ -390,6 +400,7 @@ def display_logs(rows, derived_virtual_selected_rows):
         selected_rows = df[df.index.isin(derived_virtual_selected_rows)]
         cols_ = selected_rows.shape[0]
         
+        
         titles = [selected_rows.iloc[i:i+1]['Type'].values[0]+', '+
                   selected_rows.iloc[i:i+1]['Well_name'].values[0]
                   for i in range(cols_)]  
@@ -442,6 +453,7 @@ def display_logs(rows, derived_virtual_selected_rows):
         appeared_time=[]
         link_size = [2]
         for i in range(0, cols_):
+                
                 type_curve = selected_rows.iloc[i:i+1]['Type'].values[0]
                 ## Reading data from gds with appropriation type of curve. 
                 ## Second variant - read at the beginning all data to the memmory
@@ -452,7 +464,6 @@ def display_logs(rows, derived_virtual_selected_rows):
                 lat =  selected_rows.iloc[i:i+1][new_columns_name[1]].values[0]
                 lon =  selected_rows.iloc[i:i+1][new_columns_name[2]].values[0]
                 
-                
                 start_d = selected_rows.iloc[i:i+1][new_columns_name[3]].values[0]
                 stop_d = selected_rows.iloc[i:i+1][new_columns_name[4]].values[0]
                 
@@ -461,12 +472,13 @@ def display_logs(rows, derived_virtual_selected_rows):
                                 (data_curves['lat']==lat) & 
                                 (data_curves['lon']==lon) &
                                 (data_curves['DEPTH']>=start_d) &
-                                (data_curves['DEPTH']<=stop_d+1)]
+                                (data_curves['DEPTH']<=stop_d)]
+                
                 df_curve = df_curve[~( (df_curve.duplicated(['DEPTH'])))]
+                
                 y = df_curve[columns_curves[0]]
                 x = df_curve[columns_curves[1]]
-                                 
-            
+                          
                 name = str(lat)+'_'+str(lon)+'_'+ wellname + '_'+ type_curve
                 fig.add_trace(go.Scatter(x=x, y=y, mode='lines', line=dict(width = link_size[0]), 
                                          marker_color=color_curve[type_curve],
@@ -497,6 +509,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                         x_max_f = x_min_
                         
                         if k==0:
+                                                
                             x_f = [x_min_f + (x_max_f - x_min_f)/2]
                             dy = df_curve['DEPTH'].values[-1]
                             y_f_name = [y_min - 0.01 * dy]
@@ -511,7 +524,9 @@ def display_logs(rows, derived_virtual_selected_rows):
                             k +=1
                         
                         fig.add_trace(go.Scatter(name = f, 
-                                                 x = [x_min_f, x_min_f, x_max_f, x_max_f, x_min_f],
+                                                 x = [x_min_f, x_min_f, 
+                                                      x_max_f, x_max_f, x_min_f
+                                                     ],#[x_min, x_min, x_max, x_max, x_min], 
                                                  y = [y_min, y_max, y_max, y_min, y_min], 
                                                  mode='lines', line=dict(color="black"),
                                                  fill="toself", fillcolor = colors[f], showlegend=False
@@ -533,7 +548,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                 type_curve = ['GR', 'SGR']
                 if len(time_curve)==1 and (' ' in time_curve) :
                     pass
-                elif columns[1] in type_curve: #=='GR' or :
+                elif columns[1] in type_curve:
                     b = 0
                     for t in time_curve:
                         color_t = 'FloralWhite '
@@ -553,7 +568,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                         if b == 0:
                             x_t = [x_min_t + (x_max_t-x_min_t)/2]
                             dy = df_curve['DEPTH'].values[-1]
-                            y_t_name = [y_min - 0.01 * dy] 
+                            y_t_name = [y_min - 0.01 * dy]
                             fig.add_trace(go.Scatter(name = t, 
                                                  x = [x_min_t + (x_max_t-x_min_t)/2], 
                                                  y = y_t_name,
@@ -666,6 +681,35 @@ def display_las(rows, derived_virtual_selected_rows):
                                                  className="list-group-item list-group-item-action list-group-item-secondary text-center") if url!='none'
                                else dbc.ListGroupItem(name, className="list-group-item list-group-item-action list-group-item-secondary text-center")
                                for name,url in zip(name_well, link)])
+
+
+@app.callback(             
+              Output(component_id='choosen-wells', component_property='children'), 
+              Input('curves-table_1', "derived_virtual_data"),
+              Input('curves-table_1', "derived_virtual_selected_rows")
+                            )
+def change_map(rows, derived_virtual_selected_rows):
+    
+        
+    if derived_virtual_selected_rows is None:
+        derived_virtual_selected_rows = []
+        pass
+        #return scatter_plot_graph
+    
+    if derived_virtual_selected_rows!=[]:
+        
+        df = pd.DataFrame(rows)
+        selected_rows = df[df.index.isin(derived_virtual_selected_rows)]
+        print(selected_rows.columns)       
+        fig_map_ = px.scatter_mapbox(selected_rows, hover_name=selected_rows.Well_name,
+                                lat="Lat", lon="Lon",  zoom=4, mapbox_style='satellite')
+        fig_map_.layout.template = plotly_theme 
+        fig_map_.update_layout(xaxis=dict(title='Saudi Arabya Plate'),
+                          clickmode='event+select')
+        fig_map_.update_traces(marker_size=9, marker_color='red')
+        scatter_plot_graph = dcc.Graph(id='scatter_plot', figure=fig_map_) 
+        
+        return scatter_plot_graph
 
 
 if __name__ == '__main__':
