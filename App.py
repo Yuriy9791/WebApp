@@ -170,7 +170,8 @@ px.set_mapbox_access_token(token)
 fig_map = px.scatter_mapbox(wells_map[for_maping_list], title='Saudi Arabya Plate',
                             lat="lat", lon="lon",  hover_name=wells_map.Name, zoom=4, mapbox_style='satellite', height= 800)
 fig_map.layout.template = plotly_theme 
-fig_map.update_layout(clickmode='event+select')
+fig_map.update_layout(margin=dict(l=0, r=0, t=35, b=0),
+                      clickmode='event+select')
 fig_map.update_traces(marker_size=8, marker_color='red')
 
 #fig_logs = tools.make_subplots(rows=1, cols=1).\
@@ -180,10 +181,15 @@ fig_map.update_traces(marker_size=8, marker_color='red')
 Tab_map_view = [
                  dbc.Row(
                           [
-                            dbc.Col(dcc.Graph(id='basic-interactions', figure=fig_map), width=4, md={'size': 8,  "offset": 1, 'order': 'first'}),
+                            dbc.Col([
+                                      html.Br(),
+                                      dcc.Graph(id='basic-interactions', figure=fig_map)
+                                    ],
+                                      width=4, md={'size': 8,  "offset": 1, 'order': 'first'}
+                                   ),
                             dbc.Col(
                                      [
-                                         html.Br(), html.Br(),
+                                         html.Br(), 
                                          html.H5(children="Geologic Time", style = {'textAlign' : 'center'}),
                                          html.Br(),
                                          dbc.Card(
@@ -211,6 +217,7 @@ Tab_map_view = [
                           ]
                         ), 
                
+                html.Br(),
                 dbc.Row([ dbc.Col(
                                    html.H5(children="Selected Wells", style = {'textAlign' : 'center'}), 
                                    width=4, md={'size': 6,  "offset": 2, 'order': 'first'}
@@ -238,7 +245,7 @@ Tab_log_view = [
                  dbc.Row(
                           [
                            
-                           dbc.Col(dbc.Container(html.Div(id='logs'), fluid=True), width=4, md={'size': 8, "offset": 0, 'order': 1}),
+                           dbc.Col(dbc.Container(html.Div(id='logs'), fluid=True), width=4, lg={'size': 8, "offset": 0, 'order': 1}, md=12),
                            dbc.Col( [
                                       html.Br(),
                                       html.Br(),
@@ -246,10 +253,10 @@ Tab_log_view = [
                                       html.Div(id='downloading'),
                                       html.Br(),
                                       html.Br(),
-                                      html.H5(children="Choosen Wells", style = {'textAlign' : 'center'}),
+                                      #html.H5(children="Choosen Wells", style = {'textAlign' : 'center'}),
                                       dbc.Container(html.Div(id='choosen-wells')),
                                       
-                                    ], width=4, md={'size': 4, "offset": 0, 'order': 2}),
+                                    ], width=4, xl={'size': 4, "offset": 0, 'order': 2}, md=12),
                               
                               
                           ]
@@ -504,7 +511,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                         x_min = df_curve[columns[1]].dropna().values.min()
                         x_max = df_curve[columns[1]].dropna().values.max()
                         
-                        x_min_ = x_min * 0.8
+                        x_min_ = x_min * 0.9
                         x_min_f =  x_min_ - (x_max - x_min_) * 0.5
                         x_max_f = x_min_
                         
@@ -561,7 +568,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                         x_min = df_curve[columns[1]].dropna().values.min()
                         x_max = df_curve[columns[1]].dropna().values.max()
                         
-                        x_min_ = x_min * 0.8
+                        x_min_ = x_min * 0.9
                         x_min_t =  x_min_ - (x_max - x_min_) * 0.5 * 2
                         x_max_t = x_min_ - (x_max - x_min_) * 0.5
                         
@@ -616,8 +623,10 @@ def display_logs(rows, derived_virtual_selected_rows):
                     fig.update_yaxes(autorange="reversed")
                 
                 
-        fig.update_layout(autosize=False,  height=2500, title_text="Curve Log",
-                          #xaxis_range=[x.min()-x.min()*0.1, x.max()+x.max()*0.1],
+        fig.update_layout(autosize=True,  
+                          height=2500, 
+                          #title_text="Curve Log",
+                          margin=dict(l=10, r=20, t=70, b=0),
                           yaxis_range=[y.min(),y.max()], 
                           hovermode="y unified")
         fig.layout.template = plotly_theme
@@ -694,15 +703,22 @@ def change_map(rows, derived_virtual_selected_rows):
     if derived_virtual_selected_rows is None:
         derived_virtual_selected_rows = []
         pass
-            
+        #return scatter_plot_graph
+    
     if derived_virtual_selected_rows!=[]:
+        
         df = pd.DataFrame(rows)
         selected_rows = df[df.index.isin(derived_virtual_selected_rows)]
-        fig_map_ = px.scatter_mapbox(selected_rows, hover_name=selected_rows.Well_name,
-                                lat="Lat", lon="Lon",  zoom=4, mapbox_style='satellite')
+         
+        fig_map_ = px.scatter_mapbox(selected_rows, 
+                                     hover_name=selected_rows.Well_name, 
+                                     title='Selected Wells',
+                                     lat="Lat", lon="Lon",  
+                                     zoom=4, 
+                                     mapbox_style='satellite')
         fig_map_.layout.template = plotly_theme 
-        fig_map_.update_layout(xaxis=dict(title='Saudi Arabya Plate'),
-                          clickmode='event+select')
+        fig_map_.update_layout(margin=dict(l=0, r=0, t=35, b=0),
+                               clickmode='event+select')
         fig_map_.update_traces(marker_size=9, marker_color='red')
         scatter_plot_graph = dcc.Graph(id='scatter_plot', figure=fig_map_) 
         
