@@ -244,8 +244,7 @@ Tab_log_view = [
                  
                  dbc.Row(
                           [
-                           
-                           dbc.Col(dbc.Container(html.Div(id='logs'), fluid=True), width=4, lg={'size': 8, "offset": 0, 'order': 1}, md=12),
+                           dbc.Col(dbc.Container(html.Div(id='logs'), fluid=True), width=4, lg={'size': 9, "offset": 0, 'order': 1}, md=12),
                            dbc.Col( [
                                       html.Br(),
                                       html.Br(),
@@ -253,11 +252,19 @@ Tab_log_view = [
                                       html.Div(id='downloading'),
                                       html.Br(),
                                       html.Br(),
-                                      #html.H5(children="Choosen Wells", style = {'textAlign' : 'center'}),
+                                      html.Br(),
+                                      html.Br(),
+                                      html.Br(),
+                                      html.Br(),
+                                      html.Br(),
+                                      html.Br(),
+                                      html.Br(),
+                                      html.Br(),
+                                      html.Br(),
+                                      html.Br(),
+                                      html.Br(),
                                       dbc.Container(html.Div(id='choosen-wells')),
-                                      
-                                    ], width=4, xl={'size': 4, "offset": 0, 'order': 2}, md=12),
-                              
+                                    ], width=4, xl={'size': 3, "offset": 0, 'order': 2}, md=12),
                               
                           ]
                          ),
@@ -279,7 +286,6 @@ app.layout = dbc.Container([
                                 dbc.Col([
                                            dbc.Tabs(
                                                     [
-                                                    #dbc.Tab(Tab_content, label="Content", activeTabClassName="fw-bold fst-italic"),
                                                      dbc.Tab(Tab_map_view, label="Wells", activeTabClassName="fw-bold fst-italic"),
                                                      dbc.Tab(Tab_log_view, label="Logs", activeTabClassName="fw-bold fst-italic"),
                                                     ]
@@ -392,7 +398,6 @@ def display_click_data(clickData):
 
 @app.callback(
               Output('logs', 'children'),
-              #Output("downloaded", "children"),
               Input('curves-table_1', "derived_virtual_data"),
               Input('curves-table_1', "derived_virtual_selected_rows"),
               prevent_initial_call=True,
@@ -406,8 +411,7 @@ def display_logs(rows, derived_virtual_selected_rows):
         df = pd.DataFrame(rows)
         selected_rows = df[df.index.isin(derived_virtual_selected_rows)]
         cols_ = selected_rows.shape[0]
-        
-        
+               
         titles = [selected_rows.iloc[i:i+1]['Type'].values[0]+', '+
                   selected_rows.iloc[i:i+1]['Well_name'].values[0]
                   for i in range(cols_)]  
@@ -623,7 +627,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                     fig.update_yaxes(autorange="reversed")
                 
                 
-        fig.update_layout(autosize=True,  
+        fig.update_layout(autosize=False,  
                           height=2500, 
                           #title_text="Curve Log",
                           margin=dict(l=10, r=20, t=70, b=0),
