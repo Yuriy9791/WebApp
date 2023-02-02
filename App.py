@@ -489,17 +489,19 @@ def display_logs(rows, derived_virtual_selected_rows):
                 
                 y = df_curve[columns_curves[0]]
                 x = df_curve[columns_curves[1]]
-                          
+                formation = df_curve[columns_curves[6]]
+                                          
                 name = str(lat)+'_'+str(lon)+'_'+ wellname + '_'+ type_curve
                 fig.add_trace(go.Scatter(x=x, y=y, mode='lines', line=dict(width = link_size[0]), 
                                          marker_color=color_curve[type_curve],
                                          name=str(lat)+'_'+str(lon)+'_'+ wellname + '_'+ type_curve, 
-                                         hovertemplate=
+                                         hovertemplate= "<br>" +
                                                        type_curve+": %{x:.2f}<br><br>" +
                                                        "Depth: %{y:.1f}<br><br>" +
-                                                       'Well: ' + str(lat)+'_'+str(lon)+'_'+wellname+"<br>" +
+                                                       'Well: ' + str(lat)+'_'+str(lon) + '_'+wellname+"<br>" +
+                                                       'Formation: ' + formation + "<br>" +
+                                                       
                                                        "<extra></extra>"), 1, i+1)
-                #print(df_curve)
                 columns = df_curve.columns
                 formation_curve = pd.unique(df_curve.Formation)
                 time_curve = pd.unique(df_curve.Time)
@@ -520,7 +522,6 @@ def display_logs(rows, derived_virtual_selected_rows):
                         x_max_f = x_min_
                         
                         if k==0:
-                                                
                             x_f = [x_min_f + (x_max_f - x_min_f)/2]
                             dy = df_curve['DEPTH'].values[-1]
                             y_f_name = [y_min - 0.01 * dy]
@@ -537,7 +538,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                         fig.add_trace(go.Scatter(name = f, 
                                                  x = [x_min_f, x_min_f, 
                                                       x_max_f, x_max_f, x_min_f
-                                                     ],#[x_min, x_min, x_max, x_max, x_min], 
+                                                     ],
                                                  y = [y_min, y_max, y_max, y_min, y_min], 
                                                  mode='lines', line=dict(color="black"),
                                                  fill="toself", fillcolor = colors[f], showlegend=False
@@ -545,7 +546,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                                       )
                         
                         fig.add_trace(go.Scatter(name = f, 
-                                                 x = [x_min_f + (x_max_f - x_min_f)/2],#[x_min + (x_max-x_min)/2], 
+                                                 x = [x_min_f + (x_max_f - x_min_f)/2],
                                                  y=[y_min + (y_max-y_min)/2],
                                                  mode='text',line=dict(color="black"),text=[f],
                                                  textposition="middle center", showlegend=False, 
