@@ -261,8 +261,7 @@ Tab_log_view = [
                                       html.Br(),
                                       html.Br(),
                                       html.Br(),
-                                      html.Br(),
-                                      html.Br(),
+                                      
                                       dbc.Container(html.Div(id='choosen-wells')),
                                     ], width=4, xl={'size': 3, "offset": 0, 'order': 2}, md=12),
                               
