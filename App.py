@@ -261,7 +261,7 @@ Tab_log_view = [
                                       html.Br(),
                                       html.Br(),
                                       html.Br(),
-                                     
+                                      
                                       dbc.Container(html.Div(id='choosen-wells')),
                                     ], width=4, xl={'size': 3, "offset": 0, 'order': 2}, md=12),
                               
@@ -453,7 +453,6 @@ def display_logs(rows, derived_virtual_selected_rows):
                   for f,i in zip(formations, range(0, len(formations)))
                  }
         
-        
         times = pd.unique(times)
         colors_t = {t: ('rgba(' + ','.join((str(60+i*10),str(256/(i+1)), str(i*15), str(0.2)))+')') 
                   for t,i in zip(times, range(0, len(times)))
@@ -534,14 +533,14 @@ def display_logs(rows, derived_virtual_selected_rows):
                                                  ), 1, i+1                            
                                           )
                             k +=1
-                        print(wellname, f, colors[f])
+                        
                         fig.add_trace(go.Scatter(name = f, 
                                                  x = [x_min_f, x_min_f, 
                                                       x_max_f, x_max_f, x_min_f
                                                      ],
                                                  y = [y_min, y_max, y_max, y_min, y_min], 
                                                  mode='lines', line=dict(color="black"),
-                                                 fill="toself", fillcolor = 'rgba(450,6.4,585,0.2)', showlegend=False #colors[f]
+                                                 fill="toself", fillcolor = colors[f], showlegend=False
                                                 ), 1, i+1
                                       )
                         
@@ -636,7 +635,7 @@ def display_logs(rows, derived_virtual_selected_rows):
                           hovermode="y unified")
         fig.layout.template = plotly_theme
     
-        return  dcc.Graph(id='logs_', figure = fig)
+        return  dcc.Graph(id='logs_', figure = fig)#, pd.unique(link)
 
 
 @app.callback(
