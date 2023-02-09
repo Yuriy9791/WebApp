@@ -80,42 +80,6 @@ color_curve = {
                             
                }
 
-# formation color
-formations = [' ', 'AJLUN GROUP', 'ARAB', 'DIYAB', 'AREAJ', 'ARAB-D',
-       'Upper ARAEJ', 'GOTNIA', 'JUBAILA', 'NAJMAH LIMSTONE',
-       'SARGELU LIMSTONE', 'DHORUMA', 'MARRAT', 'Shuaiba', 'Biyadh',
-       'Aruma', 'Wasia', 'Al Wajh', 'Matiyah', 'Usfan', 'Adaffa',
-       'Proterozoic Basement', "Shu'aiba", 'Kharaib', 'Lekhwair',
-       'Habshan', 'Hith', 'Lafan', 'Mishrif', 'Shilaif', 'Mauddud',
-       'Nahr Umr', 'Zakum', 'JUBAILA-RAYDA', 'HANIFA',
-       'HADRIYAH LIMSTONE', 'TUWAIQ MOUNTAIN LIMESTONE', 'DHRUMA',
-       'UWAINAT MEMBER', 'MAFRAQ', 'NAJMAH', 'SARGELU', 'MAKHUL',
-       'HITH Anhidrite', 'GOTNIA 1st Salt', '1st Anhidrite', 'MFS J100',
-       'GOTNIA 2nd Salt', '2nd Anhidrite', 'MFS J90', 'GOTNIA 3rd Salt',
-       '3rd Anhidrite', 'MFS J80', 'GOTNIA 4th Salt', '4th Anhidrite',
-       'ARAEJ', 'IZHARA', 'JILH', 'MINJUR', 'JUBAILA EQUIVALENT',
-       'DIYAB EQUIVALENT', 'HANIFA EQUIVALENT', 'TUWAIQ MOUNTAIN',
-       'UPPER ARAEJ', 'SULAIY', 'HITH ANHYDRITE', ' Lwr FARS',
-       'PILA SPI(Group)', 'KOLOSH(Group)', 'SHIRANISH(Group)',
-       'Upr QAMCHUQA', 'Lwr QAMCHUQA', 'SEHKANIYAN(Group)', 'SARKI',
-       'BALUTI', 'KURRA CHINE', 'GELI KHANA', 'BEDUH', 'MIRGA MIR',
-       'CHIA ZAIRI', 'HARUR', 'ORA', 'KAISTA', 'PIRISPIKI', 'KHABOUR',
-       'TQMN', 'QISHN', 'FURT', "SA'AR", 'NAHR UMR', "SHU'AIBA",
-       'KHARAIB', 'LEKHWAIR', 'HABSHAN', 'SARA', 'TAQIYEH', 'GHAREB',
-       'AMMAN', 'KHISH-SHA', 'MUDAWWARA', 'DUBEIDIB', 'SAMRA',
-       'UPPER AMMAN', 'LOWER AMMAN', 'WADI SIR', 'SHUEIB', 'HUMMAR',
-       'FUHEIS', 'NAUR', 'KURNUB', 'MAIN', 'BURG LIMSTONE',
-       'AMMAN/WADI SIR', 'HUNI', 'ABU RUWEIS', 'UM TINA', 'IRAQ AL AMIR',
-       'MUKHEIRISH', 'HISBAN', 'HUDEIB', 'HISWA', 'MUKHEIRIS', 'U.GHAREB',
-       'L.GHAREB', 'U.AMMAN', 'L.AMMAN', 'AZRAQ', 'SHUEIB/NAUR', 'ARAMUJ',
-       'BASEMENT', 'UMM SAHM', 'DISI', 'KHISH-HA', 'MUDAWWARA/KHISH-HA',
-       'DISI/UMM SAHM', 'UMM SHRIN', 'BURJ', 'SALEB', ' HABSHAN', 'HITH',
-       'ARAB-A', 'ARAB-B', 'ARAB-C', 'THAMAMA', 'ANHYDRITE', 'MANIFA',
-       'ARAB-ABC', 'ARAB-D UPPER', 'ARAB-D LOWER']
-
-colors = {f: ('rgba(' + ','.join((str(60+i*10),str(256/(i+1)), str(i*15), str(0.2)))+')') 
-                  for f,i in zip(formations, range(0, len(formations)))
-                 }
 #### model ##############################################################################################################################################################
 
 
@@ -484,10 +448,10 @@ def display_logs(rows, derived_virtual_selected_rows):
             for t in list(df_curve.Time):
                 times.append(t)
                 
-        #formations = pd.unique(formations)
-        #colors = {f: ('rgba(' + ','.join((str(60+i*10),str(256/(i+1)), str(i*15), str(0.2)))+')') 
-        #          for f,i in zip(formations, range(0, len(formations)))
-        #         }
+        formations = pd.unique(formations)
+        colors = {f: ('rgba(' + ','.join((str(60+i*10),str(256/(i+1)), str(i*15), str(0.2)))+')') 
+                  for f,i in zip(formations, range(0, len(formations)))
+                 }
         
         
         times = pd.unique(times)
