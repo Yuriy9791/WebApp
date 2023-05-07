@@ -316,7 +316,7 @@ def update_display_wells(options_chosen):
 
     return fig_map
 
-
+"""
 @app.callback(Output('curves-table', 'children'),
               Input('basic-interactions', 'selectedData'))
 def display_click_data(clickData):
@@ -727,7 +727,7 @@ def change_map(rows, derived_virtual_selected_rows):
         scatter_plot_graph = dcc.Graph(id='scatter_plot', figure=fig_map_) 
         
         return scatter_plot_graph
-
+"""
 
 if __name__ == '__main__':
     app.run_server()
