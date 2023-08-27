@@ -56,7 +56,7 @@ geotime_list['Precambrian'] = 0
 list_mnemonics_log500 = ['']
 list_mnemonics_log2000 =  ['PERM']
 list_mnemonics_RES = ['RESD', 'RESS', 'RES', 'SFLU']
-list_mnemonics = ['SO', 'DT', 'RHOB', 'GR', 'SGR', 'SONIC', 'GNT', 'SP', 'DTC']
+list_mnemonics = ['SO', 'DT', 'RHOB', 'GR', 'SGR', 'SONIC', 'GNT', 'SP', 'DTC', 'TOC']
 
 # changing in columns name
 new_columns_name = ['Time', 'Lat', 'Lon', 'Depth_start, feet', 'Depth_finish, feet', 'Well_name']
