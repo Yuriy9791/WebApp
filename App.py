@@ -77,6 +77,7 @@ color_curve = {
                'RES' :  'CornflowerBlue',
                'RESD' :  'CornflowerBlue',
                'RESS' :  'CornflowerBlue',
+               'TOC': 'orange'
                             
                }
 
