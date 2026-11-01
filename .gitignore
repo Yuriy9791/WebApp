@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.env
+.env.*
+!.env.example
+*.log
+data/
+reports/
+
+# Local CloudShell backups and storage settings
+.cloudshell-fix-*-backup-*/
+state/
+*.zip
