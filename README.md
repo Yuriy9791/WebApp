@@ -86,3 +86,11 @@ GDS_TEST_ROOT=/absolute/path/GDS_CloudShell_Kit/payload .venv/bin/python -m pyte
 
 Проверки сервера: `/healthz` и `/readyz`. Полная проверка Parquet выполняется
 отдельной командой `check_s3.sh --all`.
+
+## Source PDF downloads
+
+Начальный модуль добавляет Download source PDF к явно связанным логам.
+PDF и catalog.json хранятся в S3 publications/, без пересборки release данных.
+Полная цепочка: [подготовка, права, upload и приложение](docs/source_pdf_upload_RU.md).
+Upload script: tools/upload_publication.py; зависимости: requirements-deploy.txt.
+Настоящие PDF необходимо предоставить отдельно; кнопки для отсутствующих файлов не создаются.

@@ -1,0 +1,10 @@
+{
+  "pdf_file": "YOUR_PAPER.pdf",
+  "title": "Full publication title",
+  "links": [
+    {
+      "las_filename": "EXACT_LAS_FILENAME.las",
+      "curves": ["GR", "DT"]
+    }
+  ]
+}

@@ -13,8 +13,10 @@ from urllib.parse import quote
 
 import boto3
 from botocore.config import Config
+from botocore.exceptions import ClientError
 import pyarrow.parquet as pq
 from .curve_policy import GLOBAL_POLICY, curve_types, plottable
+from .publications import CATALOG_KEY, decode_catalog, select_papers
 
 
 class DataError(ValueError):
@@ -206,6 +208,28 @@ class Repository:
                 continue
             result.extend(read_csv(self.file(snap, entry['path'])))
         return result
+
+    def publication_catalog(self):
+        try:
+            raw = self.store.read(CATALOG_KEY)
+        except FileNotFoundError:
+            raw = None
+        except ClientError as error:
+            if error.response['Error']['Code'] not in {'NoSuchKey', '404', 'NotFound'}:
+                raise
+            raw = None
+        return decode_catalog(raw)
+
+    def source_papers(self, snap, log_ids):
+        fingerprints = {key: snap.records[snap.curves[key]['record_id']]['enriched_sha256']
+                        for key in log_ids if key in snap.curves}
+        if not fingerprints:
+            return []
+        return select_papers(self.publication_catalog(), fingerprints)
+
+    def source_paper(self, publication_id):
+        return next((p for p in self.publication_catalog()['papers']
+                     if p['publication_id'] == publication_id), None)
 
     def curve_rows(self, snap, selected):
         selected = set(selected or []) & set(snap.records)

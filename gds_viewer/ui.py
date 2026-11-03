@@ -5,6 +5,7 @@ from urllib.parse import quote
 from dash import Dash, Input, Output, State, ctx, dash_table, dcc, html
 from dash.exceptions import PreventUpdate
 from flask import abort, redirect, send_file
+from botocore.exceptions import ClientError
 from .data import Repository, LocalStore, DataError, ages, visible_records, update_selection
 from .curve_policy import GLOBAL_POLICY
 from .figures import map_figure, build_figures
@@ -47,6 +48,28 @@ def make_app(repo=None):
             html.Section([html.H2('Download LAS'),html.Div(id='downloads'),html.P(id='stratigraphy-status',className='hint')],className='downloads'),html.Footer('GDS Viewer · Iteration 2 · LAS measurements / CSV metadata',className='muted')],className='shell')
     app.layout = layout
 
+    def source_documents(snap, chosen, rows):
+        refs = list(dict.fromkeys(r['Reference'] for r in rows if r['id'] in chosen))
+        children = [html.H2('Publications'), *[publication(r) for r in refs]]
+        try:
+            papers = repo.source_papers(snap, chosen)
+        except Exception:
+            log.exception('Cannot read source-PDF catalog')
+            return children + [html.P('Source PDFs are currently unavailable.', className='hint')]
+        if not papers:
+            return children + [html.P('Source PDF has not been uploaded for the selected logs.', className='hint')]
+        labels = {r['id']: r['Well'] + ' · ' + r['Curve'] for r in rows}
+        for paper in papers:
+            children.append(html.Div([
+                html.H3(paper['title']),
+                html.P(' | '.join(labels[k] for k in paper['selected_log_ids']), className='hint'),
+                html.A('Download source PDF', href='/source-pdf/' + paper['publication_id'], className='download-link'),
+            ], className='source-paper'))
+        covered = {key for paper in papers for key in paper['selected_log_ids']}
+        if set(chosen) - covered:
+            children.append(html.P('Some selected logs do not yet have an uploaded source PDF.', className='hint'))
+        return children
+
     @app.callback(Output('wells-panel','style'),Output('logs-panel','style'),Input('tabs','value'))
     def tabs(value):
         return {'display':'block' if value=='wells' else 'none'},{'display':'block' if value=='logs' else 'none'}
@@ -85,8 +108,7 @@ def make_app(repo=None):
         try:
             snap=repo.from_descriptor(descriptor); rows=repo.curve_rows(snap,wells); allowed={r['id'] for r in rows}; chosen=[k for k in (chosen or []) if k in allowed]
             figures=build_figures(repo,snap,chosen,lower,upper,scale,reverse)
-            refs=list(dict.fromkeys(r['Reference'] for r in rows if r['id'] in chosen))
-            return [html.Div(dcc.Graph(figure=f,responsive=True,style={'width':'100%','minWidth':f'{f.layout.width}px','height':f'{f.layout.height}px'},config={'displaylogo':False,'toImageButtonOptions':{'format':'png','filename':'GDS_logs'}}),className='log-scroll') for f in figures],[html.H2('Publications'),*[publication(r) for r in refs]]
+            return [html.Div(dcc.Graph(figure=f,responsive=True,style={'width':'100%','minWidth':f'{f.layout.width}px','height':f'{f.layout.height}px'},config={'displaylogo':False,'toImageButtonOptions':{'format':'png','filename':'GDS_logs'}}),className='log-scroll') for f in figures],source_documents(snap,chosen,rows)
         except DataError as error: return html.P(str(error),className='error'),[]
         except Exception:
             log.exception('Log rendering failed')
@@ -107,7 +129,7 @@ def make_app(repo=None):
         try:
             snap=repo.active()
             return {'status':'ready','release':snap.release,'records':len(snap.records),'curves':len(snap.curves),
-                    'supported_curve_policy': GLOBAL_POLICY}
+                    'supported_curve_policy': GLOBAL_POLICY, 'source_pdf_downloads': True}
         except Exception:
             log.exception('Readiness check failed')
             return {'status':'data_unavailable'},503
@@ -126,4 +148,26 @@ def make_app(repo=None):
             response.headers['Cache-Control']='no-store'
             return response
         except (DataError,FileNotFoundError): abort(404)
+
+    @app.server.get('/source-pdf/<publication_id>')
+    def download_source_pdf(publication_id):
+        try:
+            paper = repo.source_paper(publication_id)
+            if paper is None:
+                abort(404)
+            if isinstance(repo.store, LocalStore):
+                from .data import sha, require
+                raw = repo.store.read(paper['key'])
+                require(len(raw) == paper['size'] and sha(raw) == paper['sha256'], 'Source PDF checksum mismatch')
+                response = send_file(repo.store.path(paper['key']), as_attachment=True,
+                                     download_name=paper['filename'], mimetype='application/pdf')
+            else:
+                response = redirect(repo.store.download_url(paper['key'], paper['filename']), 302)
+            response.headers['Cache-Control'] = 'no-store'
+            return response
+        except (DataError,FileNotFoundError):
+            abort(404)
+        except (ClientError,ValueError):
+            log.exception('Cannot download source PDF')
+            abort(503)
     return app
