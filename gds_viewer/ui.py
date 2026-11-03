@@ -36,7 +36,7 @@ def make_app(repo=None):
         types = list(snap.allowed_curve_types) or sorted({c['mnemonic'] for c in snap.curves.values()})
         return html.Main([
             dcc.Store(id='release',data=snap.descriptor),
-            html.Header([html.Div([html.Div('GDS',className='brand'),html.Div([html.H1('Geoscience Data Viewer'),html.P('Published well logs · Arabian Plate',className='subtitle')])],className='title-row'),html.Div([html.Span(f'{snap.release} · {len(snap.records)} records · {len(snap.curves)} curves',className='badge'),html.A('Reload dataset',href='/',className='text-link')],className='header-meta')]),
+            html.Header([html.Div([html.Div('GDS',className='brand'),html.Div([html.H1('Geoscience Data Viewer'),html.P('Published well logs · Arabian Plate',className='subtitle')])],className='title-row'),html.Div([html.A('Reload dataset',href='/',className='text-link')],className='header-meta')]),
             dcc.Tabs(id='tabs',value='wells',children=[dcc.Tab(label='Wells',value='wells'),dcc.Tab(label='Logs',value='logs')]),
             html.Section([
                 html.Div([html.Div([html.H2('Explore wells'),html.P('Click a point to add or remove a well. Drag a rectangle to add wells.',className='muted'),dcc.Loading(dcc.Graph(id='well-map',figure=map_figure(list(snap.records.values())),config={'displaylogo':False,'scrollZoom':True,'modeBarButtonsToAdd':['select2d']})),html.Div(id='map-count',className='muted')],className='map-panel'),
@@ -62,7 +62,7 @@ def make_app(repo=None):
     @app.callback(Output('well-map','figure'),Output('map-count','children'),Input('age-filter','value'),Input('search','value'),Input('curve-filter','value'),Input('well-select','value'),State('release','data'))
     def draw_map(age,search,curve_type,selected,descriptor):
         snap=repo.from_descriptor(descriptor); records=visible_records(snap,age,search,curve_type)
-        return map_figure(records,selected),f'{len(records)} records on map · {len(selected or [])} selected'
+        return map_figure(records,selected),f'{len(records)} wells on map · {len(selected or [])} selected'
 
     @app.callback(Output('curve-table','data'),Output('curve-table','selected_row_ids'),Output('curve-table','selected_rows'),Output('table-note','children'),Output('curve-table','tooltip_data'),Input('well-select','value'),Input('select-curves','n_clicks'),Input('clear-curves','n_clicks'),State('curve-table','derived_virtual_data'),State('curve-table','selected_row_ids'),State('release','data'))
     def fill_table(selected,select_click,clear_click,displayed,chosen,descriptor):
@@ -86,7 +86,7 @@ def make_app(repo=None):
             snap=repo.from_descriptor(descriptor); rows=repo.curve_rows(snap,wells); allowed={r['id'] for r in rows}; chosen=[k for k in (chosen or []) if k in allowed]
             figures=build_figures(repo,snap,chosen,lower,upper,scale,reverse)
             refs=list(dict.fromkeys(r['Reference'] for r in rows if r['id'] in chosen))
-            return [html.Div(dcc.Graph(figure=f,config={'displaylogo':False,'toImageButtonOptions':{'format':'png','filename':'GDS_logs'}}),className='log-scroll') for f in figures],[html.H2('Publications'),*[publication(r) for r in refs]]
+            return [html.Div(dcc.Graph(figure=f,responsive=True,style={'width':'100%','minWidth':f'{f.layout.width}px','height':f'{f.layout.height}px'},config={'displaylogo':False,'toImageButtonOptions':{'format':'png','filename':'GDS_logs'}}),className='log-scroll') for f in figures],[html.H2('Publications'),*[publication(r) for r in refs]]
         except DataError as error: return html.P(str(error),className='error'),[]
         except Exception:
             log.exception('Log rendering failed')

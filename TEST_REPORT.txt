@@ -37,3 +37,14 @@ CloudShell disk-space fix (2026-11-03):
   while validating every byte of the complete v002 payload.
 - Actual temporary-environment bootstrap and uploader --help passed.
 - Dataset v002 and its manifest are unchanged.
+
+Viewer presentation fix (2026-11-03):
+- Removed release/record/curve badge from the visible header.
+- Map count uses wells on map; checked via the Dash HTTP callback.
+- Track headers reserve separate rows for wrapped well name, curve mnemonic,
+  unit and upper-axis tick labels; removed conflicting default subplot titles.
+- Responsive graphs fill the container, with minimum track widths and horizontal
+  scroll for large groups.
+- Visually checked actual Kurdistan-4 logs at 760px and 1320px widths and six
+  tracks with long well names at 2280px.
+- All 26 tests passed; LAS/Parquet data and release files unchanged.
