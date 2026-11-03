@@ -28,3 +28,12 @@ GDS_TEST_ROOT=/path/to/v001/payload GDS_EXPANDED_TEST_ROOT=/path/to/v002/payload
 Live Heroku deployment and AWS activation require the user's signed-in sessions.
 The supplied APPLY_v002.sh command verifies that Heroku supports the new policy
 before performing AWS writes. It preserves v001.
+
+CloudShell disk-space fix (2026-11-03):
+- Upload path depends only on boto3; UI and Parquet libraries are not imported.
+- Temporary venv uses /tmp and system packages; pip cache disabled.
+- 10 deployment and bucket-discovery tests passed, including a subprocess
+  that rejects all imports of NumPy, PyArrow, Dash, Plotly, lasio and Gunicorn
+  while validating every byte of the complete v002 payload.
+- Actual temporary-environment bootstrap and uploader --help passed.
+- Dataset v002 and its manifest are unchanged.

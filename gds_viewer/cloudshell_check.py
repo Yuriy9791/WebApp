@@ -7,7 +7,6 @@ import sys
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
-from . import check_data
 
 
 def bucket_region(client, bucket):
@@ -62,6 +61,7 @@ def resolve_connection(environ, app_dir, home_dir, session):
 
 
 def main():
+    from . import check_data
     if not os.environ.get('GDS_LOCAL_ROOT'):
         bucket, region, origin = resolve_connection(os.environ, Path(__file__).resolve().parents[1], Path.home(), boto3.Session())
         os.environ['GDS_S3_BUCKET'] = bucket
