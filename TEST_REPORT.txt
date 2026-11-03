@@ -49,14 +49,14 @@ Viewer presentation fix (2026-11-03):
   tracks with long well names at 2280px.
 - All 26 tests passed; LAS/Parquet data and release files unchanged.
 
-Source PDF downloads (2026-11-03):
-- 33 tests passed in 52.46 seconds, including seven new source-PDF tests.
-- Tested exact per-log links, LAS fingerprint matching, local PDF integrity,
-  real Dash callback rendering and S3 presigned download responses.
-- Tested dry run with no writes, one-file deduplication, merged bindings and
-  concurrent catalog update protection through ETag conditions.
-- Existing v001/v002 data and current.json are unchanged by article uploads.
-- Uploader imports only boto3/stdlib; heavy UI/Parquet imports were blocked
-  during the additional reader-policy CLI check.
-- Real source articles have not yet been supplied or uploaded.
-- Live use needs Heroku deployment and read access to publications/*.
+Source PDF links using existing CSV references (2026-11-03):
+- 32 tests passed in 48.09 seconds, including six source-PDF tests.
+- PDF upload accepts only the file and an existing Reference.
+- Existing CSV log/publication relations are reused without new log bindings.
+- Existing publication text itself is the download anchor; no extra cards.
+- Tested local downloads, S3 presigned responses, unrelated references,
+  absent PDFs, reference normalization and rejecting references absent from CSV.
+- Upload updates only one PDF under publications/; no article index JSON.
+- Removed the obsolete binding JSON example and per-log uploader interface.
+- The Liu et al 2017 N Iraq (Kurdistan) example was checked against real v002 CSV.
+- Real article PDFs have not been uploaded in this session.

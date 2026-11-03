@@ -15,7 +15,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from gds_viewer.data import Repository, LocalStore, S3Store
-from gds_viewer.publications import CATALOG_KEY, catalog_bytes, decode_catalog
+from gds_viewer.publications import pdf_key, reference_id
 from gds_viewer.ui import make_app
 
 TOOLS = Path(__file__).resolve().parents[1] / 'tools'
@@ -75,62 +75,47 @@ def payload(tmp_path):
     return root, records, curves
 
 
-def source_input(tmp_path, well='A.las', curve='GR', pdf=b'%PDF-1.4\nsource article\n%%EOF'):
-    path = tmp_path / ('source_' + well + '_' + curve + '.json')
-    filename = 'paper-' + hashlib.sha256(pdf).hexdigest()[:8] + '.pdf'
-    (tmp_path / filename).write_bytes(pdf)
-    path.write_text(json.dumps({'pdf_file': filename, 'title': 'Test source article',
-                               'links': [{'las_filename': well, 'curves': [curve]}]}))
+def source_pdf(tmp_path, data=b'%PDF-1.4\nsource article\n%%EOF'):
+    path = tmp_path / 'source.pdf'
+    path.write_bytes(data)
     return path
 
 
-def attach_local(payload, input_file):
-    root, records, curves = payload
-    paper, data, _ = upload.prepare_paper(input_file, records, curves)
-    pdf = root / paper['key']
-    pdf.parent.mkdir(parents=True)
-    pdf.write_bytes(data)
-    (root / CATALOG_KEY).write_bytes(catalog_bytes({'schema_version': 1, 'papers': [paper]}))
-    return paper, data
+def attach_local(payload, pdf, reference='Reference well-a'):
+    target = payload[0] / pdf_key(reference)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(pdf.read_bytes())
 
 
 def test_older_releases_without_pdfs_still_work(payload):
-    root, _, _ = payload
-    repo = Repository(LocalStore(root), 'v001')
-    assert repo.source_papers(repo.active(), ['well-a:column:1']) == []
+    repo = Repository(LocalStore(payload[0]), 'v001')
+    assert not repo.source_pdf_exists('Reference well-a')
     client = make_app(repo).server.test_client()
     assert client.get('/readyz').json['source_pdf_downloads'] is True
-    assert client.get('/source-pdf/paper-0000000000000000').status_code == 404
+    assert client.get('/source-pdf/' + reference_id('Reference well-a')).status_code == 404
 
 
-def test_local_download_and_exact_log_binding(payload, tmp_path):
-    paper, data = attach_local(payload, source_input(tmp_path))
+def test_pdf_uses_existing_reference_for_all_related_logs(payload, tmp_path):
+    pdf = source_pdf(tmp_path)
+    attach_local(payload, pdf)
     repo = Repository(LocalStore(payload[0]), 'v001')
     snap = repo.active()
-    assert len(repo.source_papers(snap, ['well-a:column:1'])) == 1
-    assert repo.source_papers(snap, ['well-a:column:2', 'well-b:column:1']) == []
+    # Both existing curves inherit the same CSV Reference, without any new log bindings.
+    rows = repo.curve_rows(snap, ['well-a'])
+    assert len(rows) == 2 and {r['Reference'] for r in rows} == {'Reference well-a'}
+    assert repo.source_pdf_exists(rows[0]['Reference'])
+    assert not repo.source_pdf_exists(repo.curve_rows(snap, ['well-b'])[0]['Reference'])
     client = make_app(repo).server.test_client()
-    response = client.get('/source-pdf/' + paper['publication_id'])
-    assert response.status_code == 200 and response.data == data
+    response = client.get('/source-pdf/' + reference_id('Reference well-a'))
+    assert response.status_code == 200 and response.data == pdf.read_bytes()
     assert response.mimetype == 'application/pdf'
     assert 'attachment' in response.headers['Content-Disposition']
     assert response.headers['Cache-Control'] == 'no-store'
-    snap.records['well-a']['enriched_sha256'] = '0' * 64
-    assert repo.source_papers(snap, ['well-a:column:1']) == []
+    assert client.get('/source-pdf/' + reference_id('Not in the CSV')).status_code == 404
 
 
-def test_pdf_checksum_mismatch_and_catalog_path_rejected(payload, tmp_path):
-    paper, _ = attach_local(payload, source_input(tmp_path))
-    (payload[0] / paper['key']).write_bytes(b'corrupt')
-    client = make_app(Repository(LocalStore(payload[0]), 'v001')).server.test_client()
-    assert client.get('/source-pdf/' + paper['publication_id']).status_code == 404
-    paper['key'] = 'releases/v001/metadata/records.csv'
-    with pytest.raises(ValueError):
-        decode_catalog(json.dumps({'schema_version': 1, 'papers': [paper]}))
-
-
-def test_download_link_in_actual_plot_callback(payload, tmp_path):
-    paper, _ = attach_local(payload, source_input(tmp_path))
+def test_publication_name_itself_is_the_link_in_plot_callback(payload, tmp_path):
+    attach_local(payload, source_pdf(tmp_path))
     repo = Repository(LocalStore(payload[0]), 'v001')
     app = make_app(repo)
     key = next(k for k in app.callback_map if 'plot-output.children' in k)
@@ -148,63 +133,51 @@ def test_download_link_in_actual_plot_callback(payload, tmp_path):
     assert response.status_code == 200
     result = response.json['response']
     assert result['plot-output']['children'][0]['props']['children']['type'] == 'Graph'
-    rendered = json.dumps(result['publications']['children'])
-    assert 'Download source PDF' in rendered
-    assert '/source-pdf/' + paper['publication_id'] in rendered
-    assert 'Some selected logs do not yet' in rendered
+    nodes = result['publications']['children']
+    assert len(nodes) == 2  # Existing heading and existing citation, no extra cards/buttons.
+    anchor = nodes[1]['props']['children']
+    assert anchor['type'] == 'A'
+    assert anchor['props']['children'] == 'Reference well-a'
+    assert anchor['props']['href'] == '/source-pdf/' + reference_id('Reference well-a')
 
 
 @mock_aws
-def test_s3_dry_run_upload_merge_and_signed_download(payload, tmp_path):
-    store = upload.Store('gds-source-pdf-tests', 'eu-north-1')
+def test_s3_upload_reference_and_signed_download(payload, tmp_path):
+    store = upload.Store('gds-reference-pdf-tests', 'eu-north-1')
     store.provision(tmp_path / 'state')
     store.upload(payload[0], 'v001')
     store.activate(payload[0], 'v001')
     pointer = store.get('current.json')
     files = store.keys('')
-    first = source_input(tmp_path)
-    plan = upload.upload_publication(store, first)
+    pdf = source_pdf(tmp_path)
+    plan = upload.upload_publication(store, pdf, 'Reference well-a', dry_run=True)
     assert plan['mode'] == 'DRY RUN' and store.keys('') == files
-    upload.upload_publication(store, first, apply=True)
-    upload.upload_publication(store, source_input(tmp_path, curve='DT'), apply=True)
-    upload.upload_publication(store, source_input(tmp_path, well='B.las'), apply=True)
-    catalog = decode_catalog(store.get(CATALOG_KEY)[0])
-    assert len(catalog['papers']) == 1 and len(catalog['papers'][0]['links']) == 3
-    assert len(store.keys('publications/files/')) == 1
+    upload.upload_publication(store, pdf, 'Reference well-a')
+    assert store.get(pdf_key('Reference well-a'))[0] == pdf.read_bytes()
+    assert store.keys('publications/') == {pdf_key('Reference well-a')}
     assert store.get('current.json') == pointer
     repo = Repository(S3Store(store.bucket, store.region))
-    assert len(repo.source_papers(repo.active(), ['well-a:column:1'])) == 1
-    response = make_app(repo).server.test_client().get('/source-pdf/' + catalog['papers'][0]['publication_id'])
+    assert repo.source_pdf_exists('Reference well-a')
+    assert not repo.source_pdf_exists('Reference well-b')
+    response = make_app(repo).server.test_client().get('/source-pdf/' + reference_id('Reference well-a'))
     assert response.status_code == 302
     assert 'X-Amz-Signature=' in response.headers['Location']
     assert 'response-content-disposition=' in response.headers['Location']
 
 
-def test_bad_binding_rejected_before_upload(payload, tmp_path):
-    with pytest.raises(ValueError, match='Unknown/unavailable'):
-        upload.prepare_paper(source_input(tmp_path, curve='RESD'), payload[1], payload[2])
-
-
 @mock_aws
-def test_concurrent_catalog_write_is_not_overwritten(payload, tmp_path):
-    store = upload.Store('gds-source-pdf-concurrent', 'eu-north-1')
+def test_unknown_reference_does_not_write_and_existing_values_are_listed(payload, tmp_path):
+    store = upload.Store('gds-reference-validation', 'eu-north-1')
     store.provision(tmp_path / 'state')
     store.upload(payload[0], 'v001')
     store.activate(payload[0], 'v001')
-    upload.upload_publication(store, source_input(tmp_path), apply=True)
-    competing = decode_catalog(store.get(CATALOG_KEY)[0])
-    competing['papers'][0]['title'] = 'Concurrent update to preserve'
-    raw = catalog_bytes(competing)
-    original = store.s3.put_object
+    _, refs = upload.active_references(store)
+    assert set(refs.values()) == {'Reference well-a', 'Reference well-b'}
+    before = store.keys('')
+    with pytest.raises(ValueError, match='absent from the existing CSV'):
+        upload.upload_publication(store, source_pdf(tmp_path), 'Invented source')
+    assert store.keys('') == before
 
-    def race(**kwargs):
-        if kwargs['Key'] == CATALOG_KEY:
-            original(Key=CATALOG_KEY, Body=raw, **store.base)
-        return original(**kwargs)
 
-    with patch.object(store.s3, 'put_object', side_effect=race):
-        with pytest.raises(ClientError) as error:
-            upload.upload_publication(store, source_input(tmp_path, well='B.las',
-                pdf=b'%PDF-1.4\nother source\n%%EOF'), apply=True)
-    assert error.value.response['Error']['Code'] == 'PreconditionFailed'
-    assert store.get(CATALOG_KEY)[0] == raw
+def test_reference_lookup_is_stable_under_case_and_whitespace():
+    assert pdf_key('  Liu et al 2017 N Iraq (Kurdistan) ') == pdf_key('liu et al 2017  n iraq (kurdistan)')

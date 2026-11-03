@@ -89,8 +89,8 @@ GDS_TEST_ROOT=/absolute/path/GDS_CloudShell_Kit/payload .venv/bin/python -m pyte
 
 ## Source PDF downloads
 
-Начальный модуль добавляет Download source PDF к явно связанным логам.
-PDF и catalog.json хранятся в S3 publications/, без пересборки release данных.
-Полная цепочка: [подготовка, права, upload и приложение](docs/source_pdf_upload_RU.md).
-Upload script: tools/upload_publication.py; зависимости: requirements-deploy.txt.
-Настоящие PDF необходимо предоставить отдельно; кнопки для отсутствующих файлов не создаются.
+Связь логов с публикациями используется из существующего CSV Reference.
+Загрузить PDF: `python tools/upload_publication.py --pdf FILE.pdf --reference "EXISTING REFERENCE"`.
+После загрузки существующее название в Publications становится download link.
+JSON bindings, ручная привязка скважин и повторная сборка данных не нужны.
+[Краткая инструкция и read policy](docs/source_pdf_upload_RU.md).

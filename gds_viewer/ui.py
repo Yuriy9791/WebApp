@@ -8,13 +8,16 @@ from flask import abort, redirect, send_file
 from botocore.exceptions import ClientError
 from .data import Repository, LocalStore, DataError, ages, visible_records, update_selection
 from .curve_policy import GLOBAL_POLICY
+from .publications import split_references, reference_id, pdf_key, pdf_filename
 from .figures import map_figure, build_figures
 
 log = logging.getLogger(__name__)
 COLUMNS = ['Well','Curve','Unit','Start','End','Depth scale','Depth unit','Age','Reference','Notes','Latitude','Longitude']
 
 
-def publication(text):
+def publication(text, download=False):
+    if download:
+        return html.P(html.A(text, href='/source-pdf/' + reference_id(text), title='Download PDF'), className='reference')
     children, offset = [], 0
     for match in re.finditer(r'https?://[^\s<>]+', text or ''):
         children.extend([text[offset:match.start()], html.A(match.group(), href=match.group(), target='_blank', rel='noopener noreferrer')])
@@ -49,25 +52,16 @@ def make_app(repo=None):
     app.layout = layout
 
     def source_documents(snap, chosen, rows):
-        refs = list(dict.fromkeys(r['Reference'] for r in rows if r['id'] in chosen))
-        children = [html.H2('Publications'), *[publication(r) for r in refs]]
-        try:
-            papers = repo.source_papers(snap, chosen)
-        except Exception:
-            log.exception('Cannot read source-PDF catalog')
-            return children + [html.P('Source PDFs are currently unavailable.', className='hint')]
-        if not papers:
-            return children + [html.P('Source PDF has not been uploaded for the selected logs.', className='hint')]
-        labels = {r['id']: r['Well'] + ' · ' + r['Curve'] for r in rows}
-        for paper in papers:
-            children.append(html.Div([
-                html.H3(paper['title']),
-                html.P(' | '.join(labels[k] for k in paper['selected_log_ids']), className='hint'),
-                html.A('Download source PDF', href='/source-pdf/' + paper['publication_id'], className='download-link'),
-            ], className='source-paper'))
-        covered = {key for paper in papers for key in paper['selected_log_ids']}
-        if set(chosen) - covered:
-            children.append(html.P('Some selected logs do not yet have an uploaded source PDF.', className='hint'))
+        refs = list(dict.fromkeys(ref for row in rows if row['id'] in chosen
+                                  for ref in split_references(row['Reference'])))
+        children = [html.H2('Publications')]
+        for reference in refs:
+            try:
+                available = repo.source_pdf_exists(reference)
+            except ClientError:
+                log.exception('Cannot check publication PDF')
+                available = False
+            children.append(publication(reference, download=available))
         return children
 
     @app.callback(Output('wells-panel','style'),Output('logs-panel','style'),Input('tabs','value'))
@@ -152,22 +146,22 @@ def make_app(repo=None):
     @app.server.get('/source-pdf/<publication_id>')
     def download_source_pdf(publication_id):
         try:
-            paper = repo.source_paper(publication_id)
-            if paper is None:
+            reference = repo.source_reference(publication_id)
+            if reference is None:
+                abort(404)
+            key, filename = pdf_key(reference), pdf_filename(reference)
+            if not repo.store.exists(key):
                 abort(404)
             if isinstance(repo.store, LocalStore):
-                from .data import sha, require
-                raw = repo.store.read(paper['key'])
-                require(len(raw) == paper['size'] and sha(raw) == paper['sha256'], 'Source PDF checksum mismatch')
-                response = send_file(repo.store.path(paper['key']), as_attachment=True,
-                                     download_name=paper['filename'], mimetype='application/pdf')
+                response = send_file(repo.store.path(key), as_attachment=True,
+                                     download_name=filename, mimetype='application/pdf')
             else:
-                response = redirect(repo.store.download_url(paper['key'], paper['filename']), 302)
+                response = redirect(repo.store.download_url(key, filename), 302)
             response.headers['Cache-Control'] = 'no-store'
             return response
         except (DataError,FileNotFoundError):
             abort(404)
-        except (ClientError,ValueError):
-            log.exception('Cannot download source PDF')
+        except ClientError:
+            log.exception('Cannot download publication PDF')
             abort(503)
     return app
