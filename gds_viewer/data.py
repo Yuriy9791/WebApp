@@ -14,6 +14,7 @@ from urllib.parse import quote
 import boto3
 from botocore.config import Config
 import pyarrow.parquet as pq
+from .curve_policy import GLOBAL_POLICY, curve_types, plottable
 
 
 class DataError(ValueError):
@@ -91,6 +92,7 @@ class Snapshot:
     curves: dict
     metadata: dict
     stratigraphy: dict
+    allowed_curve_types: tuple = ()
 
     @property
     def descriptor(self):
@@ -152,7 +154,18 @@ class Repository:
         require(all(c['record_id'] in snap.records for c in curves), 'Orphan curve record')
         require(len({c['log_id'] for c in curves}) == len(curves), 'Duplicate curve IDs')
         snap.curves = {c['log_id']: c for c in curves if is_true(c['available_for_plot'])}
-        require(all(is_true(c['listed_in_legacy_csv']) and c.get('parquet_column') for c in snap.curves.values()), 'Unlisted or unmapped plot curve')
+        if manifest.get('curve_selection') == GLOBAL_POLICY:
+            allowed = curve_types(read_csv(self.file(snap, 'metadata/curve_types_legacy.csv')))
+            require(bool(allowed), 'Empty global curve type catalog')
+            snap.allowed_curve_types = tuple(allowed)
+            require(all(plottable(c, allowed) and c.get('parquet_column') for c in snap.curves.values()),
+                    'Disallowed, empty or unmapped plot curve')
+            require({c['log_id'] for c in curves if plottable(c, allowed)} == set(snap.curves),
+                    'Global curve type catalog is incomplete')
+        else:
+            require(manifest.get('curve_selection') in {None, 'accepted_catalog_available_for_plot'},
+                    'Unsupported curve selection policy')
+            require(all(is_true(c['listed_in_legacy_csv']) and c.get('parquet_column') for c in snap.curves.values()), 'Unlisted or unmapped plot curve')
         snap.metadata = {r['csv_row']: r for r in metadata}
         snap.stratigraphy = json.loads(self.file(snap, 'stratigraphy/index.json'))
         require(len(recs) == manifest['counts']['las_files'], 'Record count mismatch')
@@ -222,7 +235,7 @@ def visible_records(snap, selected_ages=None, query='', curve_type=None):
             continue
         if query and query not in (r['well_name_original'] + ' ' + r['Reference']).casefold():
             continue
-        if curve_type and curve_type not in r['curve_mnemonics'].split(';'):
+        if curve_type and curve_type.upper() not in {x.strip().upper() for x in r['curve_mnemonics'].split(';')}:
             continue
         out.append(r)
     return out

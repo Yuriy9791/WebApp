@@ -6,6 +6,7 @@ from dash import Dash, Input, Output, State, ctx, dash_table, dcc, html
 from dash.exceptions import PreventUpdate
 from flask import abort, redirect, send_file
 from .data import Repository, LocalStore, DataError, ages, visible_records, update_selection
+from .curve_policy import GLOBAL_POLICY
 from .figures import map_figure, build_figures
 
 log = logging.getLogger(__name__)
@@ -32,14 +33,14 @@ def make_app(repo=None):
             log.exception('Cannot open active GDS release')
             return html.Main([html.H1('GDS Viewer'),html.H2('Data connection is not ready'),html.P('Check GDS_S3_BUCKET, AWS_REGION and read access. Run check_s3.sh to diagnose.'),html.A('Retry',href='/')],className='shell')
         age_values = sorted({a for r in snap.records.values() for a in ages(r['Age'])})
-        types = sorted({c['mnemonic'] for c in snap.curves.values()})
+        types = list(snap.allowed_curve_types) or sorted({c['mnemonic'] for c in snap.curves.values()})
         return html.Main([
             dcc.Store(id='release',data=snap.descriptor),
             html.Header([html.Div([html.Div('GDS',className='brand'),html.Div([html.H1('Geoscience Data Viewer'),html.P('Published well logs · Arabian Plate',className='subtitle')])],className='title-row'),html.Div([html.Span(f'{snap.release} · {len(snap.records)} records · {len(snap.curves)} curves',className='badge'),html.A('Reload dataset',href='/',className='text-link')],className='header-meta')]),
             dcc.Tabs(id='tabs',value='wells',children=[dcc.Tab(label='Wells',value='wells'),dcc.Tab(label='Logs',value='logs')]),
             html.Section([
                 html.Div([html.Div([html.H2('Explore wells'),html.P('Click a point to add or remove a well. Drag a rectangle to add wells.',className='muted'),dcc.Loading(dcc.Graph(id='well-map',figure=map_figure(list(snap.records.values())),config={'displaylogo':False,'scrollZoom':True,'modeBarButtonsToAdd':['select2d']})),html.Div(id='map-count',className='muted')],className='map-panel'),
-                    html.Aside([html.Label('Search well or publication'),dcc.Input(id='search',type='search',debounce=True,placeholder='Name or reference…',className='search'),html.Label('Geological age'),dcc.Dropdown(id='age-filter',options=age_values,value=[],multi=True,placeholder='All ages'),html.Label('Curve type'),dcc.Dropdown(id='curve-filter',options=types,placeholder='All curve types'),html.Label('Selected wells'),dcc.Dropdown(id='well-select',options=[{'label':r['well_name_original'],'value':r['record_id']} for r in snap.records.values()],value=[],multi=True,placeholder='Select on the map or search this list'),html.P('Use this list for records sharing the same map position.',className='hint'),html.Button('Clear wells',id='clear-wells',className='secondary'),html.Hr(),html.P('Coordinates: WGS 84 · all',className='hint'),html.P('Full LAS files retain all original channels. Only approved curves appear in the table.',className='hint')],className='filters')],className='explorer'),
+                    html.Aside([html.Label('Search well or publication'),dcc.Input(id='search',type='search',debounce=True,placeholder='Name or reference…',className='search'),html.Label('Geological age'),dcc.Dropdown(id='age-filter',options=age_values,value=[],multi=True,placeholder='All ages'),html.Label('Curve type'),dcc.Dropdown(id='curve-filter',options=types,placeholder='All curve types'),html.Label('Selected wells'),dcc.Dropdown(id='well-select',options=[{'label':r['well_name_original'],'value':r['record_id']} for r in snap.records.values()],value=[],multi=True,placeholder='Select on the map or search this list'),html.P('Use this list for records sharing the same map position.',className='hint'),html.Button('Clear wells',id='clear-wells',className='secondary'),html.Hr(),html.P('Coordinates: WGS 84 · all',className='hint'),html.P('All curve types from the original CSV are supported. Available curves come from LAS measurements.',className='hint')],className='filters')],className='explorer'),
                 html.Div([html.H2('Available curves'),html.P(id='table-note',className='muted'),dash_table.DataTable(id='curve-table',data=[],columns=[{'name':c,'id':c,'type':'numeric' if c in {'Start','End','Latitude','Longitude'} else 'text'} for c in COLUMNS],row_selectable='multi',selected_row_ids=[],sort_action='native',filter_action='native',page_size=12,style_table={'overflowX':'auto'},style_cell={'fontFamily':'Arial','fontSize':12,'padding':'10px','textAlign':'left','minWidth':'90px','maxWidth':'250px','whiteSpace':'normal'},style_header={'backgroundColor':'#eef4f5','fontWeight':'bold','color':'#193c48'},tooltip_data=[],tooltip_duration=None),html.Div([html.Button('Select filtered curves',id='select-curves',className='secondary'),html.Button('Clear curves',id='clear-curves',className='secondary')],className='toolbar'),html.P('Choose curves, open Logs, then click Build logs.',className='hint')],className='table-panel')],id='wells-panel'),
             html.Section([html.Div([html.Div([html.H2('Well logs'),html.P('One track per curve; depth increases downwards.',className='muted')]),html.Button('Build logs',id='build-logs',className='primary')],className='section-heading'),html.Div([
                 html.Div([html.Label('Depth start'),dcc.Input(id='depth-start',type='number',placeholder='Full interval')]),html.Div([html.Label('Depth end'),dcc.Input(id='depth-end',type='number',placeholder='Full interval')]),html.Div([html.Label('Horizontal scale'),dcc.Dropdown(id='xscale',options=[{'label':'Automatic','value':'auto'},{'label':'Linear','value':'linear'},{'label':'Logarithmic','value':'log'}],value='auto',clearable=False)]),html.Div([html.Label('Reverse horizontal axis'),dcc.Dropdown(id='xreverse',options=[{'label':'Automatic','value':'auto'},{'label':'Yes','value':'yes'},{'label':'No','value':'no'}],value='auto',clearable=False)])],className='plot-controls'),html.P('Depth bounds use each track’s original LAS scale. Artificial depth is labelled separately. Logarithmic axes omit values ≤ 0.',className='hint'),html.Div(id='selection-status',className='muted'),dcc.Loading(html.Div(id='plot-output',children=html.P('Select curves on the Wells tab to begin.',className='empty'))),html.Div(id='publications'),html.Div([html.H2('Selected well locations'),dcc.Graph(id='selected-map',figure=map_figure([]),config={'displaylogo':False})],className='selected-map')],id='logs-panel',style={'display':'none'}),
@@ -70,7 +71,7 @@ def make_app(repo=None):
         elif ctx.triggered_id=='clear-curves': chosen=[]
         else: chosen=[k for k in (chosen or []) if k in valid]
         note=f'{len(selected or [])} selected wells · {len(rows)} available curves'
-        if selected and not rows: note+='. No approved plotting curves; LAS files remain downloadable.'
+        if selected and not rows: note+='. No supported curves with data; LAS files remain downloadable.'
         tooltip=[{c:{'value':str(r[c]),'type':'text'} for c in COLUMNS} for r in rows]
         selected_indices=[i for i,r in enumerate(rows) if r['id'] in chosen]
         return rows,chosen,selected_indices,note,tooltip
@@ -105,7 +106,8 @@ def make_app(repo=None):
     def ready():
         try:
             snap=repo.active()
-            return {'status':'ready','release':snap.release,'records':len(snap.records),'curves':len(snap.curves)}
+            return {'status':'ready','release':snap.release,'records':len(snap.records),'curves':len(snap.curves),
+                    'supported_curve_policy': GLOBAL_POLICY}
         except Exception:
             log.exception('Readiness check failed')
             return {'status':'data_unavailable'},503
