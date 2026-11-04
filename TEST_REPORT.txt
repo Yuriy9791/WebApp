@@ -60,3 +60,13 @@ Source PDF links using existing CSV references (2026-11-03):
 - Removed the obsolete binding JSON example and per-log uploader interface.
 - The Liu et al 2017 N Iraq (Kurdistan) example was checked against real v002 CSV.
 - Real article PDFs have not been uploaded in this session.
+
+Batch publication upload (2026-11-04):
+- All 38 tests passed in 29.25 seconds, with real v001/v002 data fixtures.
+- Six batch cases cover successful upload, read-only preview, resumable retry,
+  invalid Reference/checksum/path/duplicate Reference, and destination conflicts.
+- Every local file and existing destination is checked before the first write.
+- PDF files reuse existing CSV Reference; unmatched PDF/PPTX are stored as originals.
+- No changes to release CSV, LAS, Parquet, manifest or current.json.
+- User article bytes are excluded from the public source repository.
+- Actual AWS upload requires running the prepared package in the user's AWS session.

@@ -181,3 +181,82 @@ def test_unknown_reference_does_not_write_and_existing_values_are_listed(payload
 
 def test_reference_lookup_is_stable_under_case_and_whitespace():
     assert pdf_key('  Liu et al 2017 N Iraq (Kurdistan) ') == pdf_key('liu et al 2017  n iraq (kurdistan)')
+
+
+def batch_file(tmp_path, entries):
+    path = tmp_path / 'batch.json'
+    path.write_text(json.dumps({'schema_version': 1, 'files': [
+        {'file': file.name, 'sha256': hashlib.sha256(file.read_bytes()).hexdigest(), 'reference': ref}
+        for file, ref in entries]}))
+    return path
+
+
+@mock_aws
+def test_batch_upload_stores_all_originals_links_existing_references_and_can_resume(payload, tmp_path):
+    store = upload.Store('gds-batch-pdfs', 'eu-north-1')
+    store.provision(tmp_path / 'state')
+    store.upload(payload[0], 'v001')
+    store.activate(payload[0], 'v001')
+    pointer = store.get('current.json')
+    pdf = source_pdf(tmp_path)
+    extra = tmp_path / 'unmatched.pdf'
+    extra.write_bytes(b'%PDF-1.4\nUnmatched article\n%%EOF')
+    batch = batch_file(tmp_path, [(pdf, 'Reference well-a'), (extra, '')])
+    before = store.keys('')
+    preview = upload.upload_batch(store, batch, dry_run=True)
+    assert preview['files'] == 2 and preview['linked_references'] == 1
+    assert store.keys('') == before
+    result = upload.upload_batch(store, batch)
+    assert result['new_objects'] == 2
+    assert store.get(pdf_key('Reference well-a'))[0] == pdf.read_bytes()
+    assert len(store.keys('publications/originals/')) == 1
+    assert store.get('current.json') == pointer
+    with patch.object(store.s3, 'put_object', wraps=store.s3.put_object) as put:
+        result = upload.upload_batch(store, batch)
+        assert result['new_objects'] == 0 and result['unchanged_objects'] == 2
+        put.assert_not_called()
+
+
+@mock_aws
+@pytest.mark.parametrize('problem', ['unknown_reference', 'checksum', 'escape', 'duplicate_reference'])
+def test_batch_invalid_last_entry_prevents_all_writes(payload, tmp_path, problem):
+    store = upload.Store('gds-batch-invalid', 'eu-north-1')
+    store.provision(tmp_path / 'state')
+    store.upload(payload[0], 'v001')
+    store.activate(payload[0], 'v001')
+    first = source_pdf(tmp_path)
+    second = tmp_path / 'second.pdf'
+    second.write_bytes(b'%PDF-1.4\nSecond\n%%EOF')
+    batch = batch_file(tmp_path, [(first, 'Reference well-a'), (second, 'Reference well-b')])
+    config = json.loads(batch.read_text())
+    last = config['files'][-1]
+    if problem == 'unknown_reference':
+        last['reference'] = 'Invented reference'
+    elif problem == 'checksum':
+        last['sha256'] = '0' * 64
+    elif problem == 'escape':
+        last['file'] = '../outside.pdf'
+    else:
+        last['reference'] = 'Reference well-a'
+    batch.write_text(json.dumps(config))
+    with patch.object(store.s3, 'put_object', wraps=store.s3.put_object) as put:
+        with pytest.raises(ValueError):
+            upload.upload_batch(store, batch)
+        put.assert_not_called()
+    assert not store.keys('publications/')
+
+
+@mock_aws
+def test_batch_existing_conflict_is_found_before_any_new_write(payload, tmp_path):
+    store = upload.Store('gds-batch-conflict', 'eu-north-1')
+    store.provision(tmp_path / 'state')
+    store.upload(payload[0], 'v001')
+    store.activate(payload[0], 'v001')
+    pdf = source_pdf(tmp_path)
+    batch = batch_file(tmp_path, [(pdf, 'Reference well-a')])
+    store.put_new(pdf_key('Reference well-a'), b'%PDF-1.4\nDifferent article\n%%EOF')
+    with patch.object(store.s3, 'put_object', wraps=store.s3.put_object) as put:
+        with pytest.raises(ValueError, match='different bytes'):
+            upload.upload_batch(store, batch)
+        put.assert_not_called()
+    assert not store.keys('publications/originals/')

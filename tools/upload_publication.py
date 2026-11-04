@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import sys
 import os
+from zipfile import is_zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -69,10 +70,76 @@ def upload_publication(store, pdf, reference, dry_run=False):
     return plan
 
 
+def upload_batch(store, batch, dry_run=False):
+    """Preflight a local file/Reference list, archive all originals and link PDFs."""
+    config = json.loads(batch.read_text(encoding='utf-8-sig'))
+    if config.get('schema_version') != 1 or not isinstance(config.get('files'), list) or not config['files']:
+        raise ValueError('Batch requires schema_version 1 and a nonempty files list')
+    root = batch.resolve().parent
+    release, references = active_references(store)
+    objects, seen_paths, linked = {}, set(), set()
+    for entry in config['files']:
+        if not isinstance(entry, dict):
+            raise ValueError('Each batch entry must be an object')
+        relative = entry['file']
+        if not isinstance(relative, str) or Path(relative).is_absolute():
+            raise ValueError('Batch file paths must be relative')
+        path = (root / relative).resolve()
+        if not path.is_relative_to(root) or not path.is_file() or path in seen_paths:
+            raise ValueError('Missing, duplicate or unsafe batch file: ' + relative)
+        seen_paths.add(path)
+        suffix = path.suffix.lower()
+        if suffix not in {'.pdf', '.pptx'}:
+            raise ValueError('Batch supports PDF and PPTX originals: ' + relative)
+        data = path.read_bytes()
+        if (suffix == '.pdf' and not data.startswith(b'%PDF-')) or (suffix == '.pptx' and not is_zipfile(path)):
+            raise ValueError('Invalid document: ' + relative)
+        digest = sha(data)
+        if entry.get('sha256') != digest:
+            raise ValueError('File checksum mismatch: ' + relative)
+        reference = entry.get('reference', '')
+        if reference:
+            canonical = references.get(reference_key(reference))
+            if canonical is None:
+                raise ValueError('Reference is absent from the existing CSV: ' + reference)
+            if suffix != '.pdf' or reference_key(canonical) in linked:
+                raise ValueError('Each Reference must have exactly one PDF: ' + reference)
+            linked.add(reference_key(canonical))
+            objects[pdf_key(canonical)] = (path, digest, len(data))
+        else:
+            original_key = 'publications/originals/' + digest + suffix
+            objects.setdefault(original_key, (path, digest, len(data)))
+    # Check every existing destination before the first write. Never overwrite
+    # a different article silently; retries skip already uploaded identical bytes.
+    pending = []
+    for key, (path, digest, size) in objects.items():
+        current, _ = store.get(key)
+        if current is not None and sha(current) != digest:
+            raise ValueError('Existing PDF has different bytes: ' + key + '. Use the single-PDF command for an intentional replacement.')
+        if current is None:
+            pending.append((key, path, digest))
+    plan = {'mode': 'DRY RUN' if dry_run else 'UPLOAD', 'release': release,
+            'files': len(seen_paths), 'linked_references': len(linked),
+            'new_objects': len(pending), 'unchanged_objects': len(objects) - len(pending),
+            'bucket': store.bucket, 'existing_csv_links_unchanged': True}
+    print(json.dumps(plan, ensure_ascii=False, indent=2), flush=True)
+    if not dry_run:
+        store.check_bucket()
+        for number, (key, path, digest) in enumerate(pending, 1):
+            data = path.read_bytes()
+            if sha(data) != digest:
+                raise ValueError('File changed after preflight: ' + str(path))
+            store.put_new(key, data)
+            print(f'[{number}/{len(pending)}] {path.name}', flush=True)
+        print(f'Done: {len(seen_paths)} originals stored; {len(linked)} existing References have PDF downloads.', flush=True)
+    return plan
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--pdf', type=Path, help='PDF file to upload')
     parser.add_argument('--reference', help='Existing Reference copied from Publications / CSV')
+    parser.add_argument('--batch', type=Path, help='Prepared batch JSON: all originals and existing PDF References')
     parser.add_argument('--list-references', action='store_true', help='List existing CSV references')
     parser.add_argument('--dry-run', action='store_true', help='Show the destination without uploading')
     parser.add_argument('--bucket')
@@ -87,8 +154,10 @@ def main():
             {'Sid': 'ReadGDSSourcePDFs', 'Effect': 'Allow', 'Action': ['s3:GetObject'],
              'Resource': [f'arn:aws:s3:::{args.bucket}/publications/*']}]}, indent=2))
         return
-    if not args.list_references and (args.pdf is None or not args.reference):
-        parser.error('Provide --pdf and --reference')
+    if args.batch and (args.pdf or args.reference or args.list_references):
+        parser.error('--batch cannot be combined with --pdf, --reference or --list-references')
+    if not args.list_references and not args.batch and (args.pdf is None or not args.reference):
+        parser.error('Provide --batch FILE.json, or --pdf and --reference')
     session = boto3.Session(profile_name=args.profile) if args.profile else boto3.Session()
     environ = dict(os.environ)
     if args.bucket:
@@ -100,7 +169,10 @@ def main():
         for reference in references.values():
             print(reference)
         return
-    upload_publication(store, args.pdf.resolve(), args.reference, args.dry_run)
+    if args.batch:
+        upload_batch(store, args.batch.resolve(), args.dry_run)
+    else:
+        upload_publication(store, args.pdf.resolve(), args.reference, args.dry_run)
 
 
 if __name__ == '__main__':
